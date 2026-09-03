@@ -1,0 +1,380 @@
+/* ==========================================================================
+   ĐÁP ỨNG THIẾT BỊ (RESPONSIVE) & BẢN IN BÁO CÁO PDF (@media print)
+   Tối ưu hóa hiển thị Mobile, Máy tính bảng, Desktop và In ấn A4 chuẩn 2-4 trang
+   ========================================================================== */
+
+/* 1. MÀN HÌNH MÁY TÍNH BẢNG VÀ DESKTOP (>= 768px) */
+@media screen and (min-width: 768px) {
+  body {
+    padding-bottom: 24px; /* Không cần chừa khoảng trống cho bottom nav */
+  }
+
+  .desktop-nav {
+    display: block;
+  }
+
+  .bottom-nav {
+    display: none;
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-group-full {
+    grid-column: span 2;
+  }
+
+  .media-section {
+    grid-template-columns: 1fr 1fr;
+    align-items: start;
+  }
+
+  .modal-info-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+
+/* 2. ĐỊNH DẠNG BÁO CÁO KỸ THUẬT CHUẨN IN ẤN / XUẤT PDF (PRINT STYLESHEET) */
+.report-document {
+  background: white;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border-color);
+  box-shadow: var(--shadow-sm);
+  padding: 32px;
+  color: #0f172a;
+}
+
+.report-header {
+  margin-bottom: 24px;
+}
+
+.report-brand {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.vku-logo-badge {
+  background: #0284c7;
+  color: white;
+  font-size: 1.6rem;
+  font-weight: 900;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  letter-spacing: 2px;
+}
+
+.vku-inst-name {
+  font-size: 1rem;
+  font-weight: 800;
+  color: #0369a1;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.vku-dept-name {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+}
+
+.report-divider {
+  border: none;
+  height: 2px;
+  background: linear-gradient(90deg, #0284c7, #38bdf8, transparent);
+  margin: 14px 0 20px;
+}
+
+.report-title-block {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.report-main-title {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: #0f172a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.report-sub-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #0284c7;
+  margin-top: 4px;
+}
+
+.report-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px;
+  background: #f8fafc;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  margin-top: 16px;
+  font-size: 0.82rem;
+  border: 1px solid #e2e8f0;
+}
+
+.section-heading {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f172a;
+  border-bottom: 1.5px solid #0284c7;
+  padding-bottom: 6px;
+  margin: 24px 0 12px;
+}
+
+.subsection-heading {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: #334155;
+  margin: 16px 0 8px;
+}
+
+.report-p {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #334155;
+  margin-bottom: 10px;
+  text-align: justify;
+}
+
+/* Sơ đồ kiến trúc giải pháp */
+.architecture-diagram-box {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: var(--radius-md);
+  padding: 18px;
+  margin: 14px 0 20px;
+}
+
+.arch-layer {
+  background: white;
+  border: 1px solid #7dd3fc;
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  box-shadow: 0 1px 3px rgba(2, 132, 199, 0.08);
+}
+
+.arch-layer-title {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #0369a1;
+  margin-bottom: 2px;
+}
+
+.arch-layer-content {
+  font-size: 0.8rem;
+  color: #334155;
+}
+
+.arch-arrow {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #0284c7;
+  padding: 4px 0;
+}
+
+/* Bảng biểu báo cáo */
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 14px 0;
+  font-size: 0.82rem;
+}
+
+.report-table th {
+  background: #f1f5f9;
+  color: #1e293b;
+  font-weight: 700;
+  text-align: left;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+}
+
+.report-table td {
+  padding: 8px 10px;
+  border: 1px solid #e2e8f0;
+  vertical-align: middle;
+}
+
+.report-table tr:nth-child(even) {
+  background: #f8fafc;
+}
+
+/* Thẻ thống kê tóm tắt trong báo cáo */
+.stats-summary-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.stat-mini-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  text-align: center;
+}
+
+.stat-mini-num {
+  font-size: 1.4rem;
+  font-weight: 800;
+  color: #0284c7;
+}
+
+.stat-mini-lbl {
+  font-size: 0.72rem;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+/* Lưới ảnh minh chứng trong báo cáo */
+.report-photos-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin: 14px 0;
+}
+
+.report-photo-card {
+  border: 1px solid #cbd5e1;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: white;
+}
+
+.report-photo-img {
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  display: block;
+}
+
+.report-photo-meta {
+  padding: 8px 10px;
+  font-size: 0.75rem;
+  background: #f8fafc;
+}
+
+.no-photo-box {
+  grid-column: span 2;
+  text-align: center;
+  padding: 24px;
+  background: #f8fafc;
+  border: 1px dashed #cbd5e1;
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.code-box {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 14px 18px;
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  margin: 10px 0;
+  overflow-x: auto;
+}
+
+.footer-sign-block {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 40px;
+  padding-top: 20px;
+  text-align: center;
+  font-size: 0.88rem;
+}
+
+/* ==========================================================================
+   QUY TẮC IN ẤN / XUẤT PDF (@media print)
+   Định dạng trang A4 tiêu chuẩn 2 đến 4 trang
+   ========================================================================== */
+@media print {
+  /* Ẩn các thành phần giao diện không cần in */
+  .app-header,
+  .network-banner,
+  .desktop-nav,
+  .bottom-nav,
+  #toast-container,
+  .modal-backdrop,
+  .report-action-toolbar,
+  .btn,
+  .stats-grid,
+  .card-top-bar {
+    display: none !important;
+  }
+
+  /* Chỉ hiển thị duy nhất container báo cáo */
+  body, html {
+    background: white !important;
+    color: black !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .app-container {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .app-view {
+    display: none !important;
+  }
+
+  #view-report {
+    display: block !important;
+  }
+
+  .report-document {
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+  }
+
+  /* Phân tách trang theo tiêu chuẩn in A4 */
+  .report-page {
+    page-break-after: always;
+    break-after: page;
+    padding: 1.5cm 1.5cm 1cm 1.5cm;
+    min-height: 270mm;
+    box-sizing: border-box;
+  }
+
+  .report-page:last-child {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+
+  /* Tối ưu hóa màu sắc khi in */
+  .vku-logo-badge {
+    background: #0284c7 !important;
+    color: white !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .arch-layer, .architecture-diagram-box, .stat-mini-card, .report-table th {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .report-photo-img {
+    max-height: 120px !important;
+  }
+}

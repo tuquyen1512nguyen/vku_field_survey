@@ -1,0 +1,26 @@
+{
+  "name": "VKU Field Survey — Offline-First Campus Mission",
+  "short_name": "VKU Mission",
+  "description": "Ứng dụng PWA thu thập dữ liệu và khảo sát cơ sở vật chất ngoại tuyến tại khuôn viên Đại học CNTT & TT Việt - Hàn (VKU)",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b132b",
+  "theme_color": "#0b132b",
+  "categories": ["productivity", "utilities", "education"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

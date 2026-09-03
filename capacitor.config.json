@@ -1,0 +1,20 @@
+{
+  "appId": "vn.edu.vku.fieldsurvey",
+  "appName": "VKU Field Survey",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "backgroundColor": "#0284c7",
+  "server": {
+    "androidScheme": "https",
+    "cleartext": true
+  },
+  "plugins": {
+    "Camera": {
+      "presentationStyle": "fullscreen"
+    },
+    "Geolocation": {
+      "enableHighAccuracy": true
+    },
+    "Network": {}
+  }
+}
