@@ -1,17 +1,15 @@
 import { Capacitor } from '@capacitor/core';
-import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
 export class NotificationService {
   private static isInitialized = false;
 
   /**
-   * Khởi tạo an toàn các dịch vụ Thông báo (tránh crash khi chưa cấu hình Firebase FCM)
+   * Khởi tạo an toàn dịch vụ Thông báo cục bộ (Local Notifications)
    */
   static async init(): Promise<void> {
     if (this.isInitialized) return;
 
-    // 1. Khởi tạo Local Notifications (Thông báo trạng thái đồng bộ)
     try {
       if (Capacitor.isPluginAvailable('LocalNotifications')) {
         const localStatus = await LocalNotifications.checkPermissions();
@@ -19,26 +17,11 @@ export class NotificationService {
           await LocalNotifications.requestPermissions();
         }
       }
+      this.isInitialized = true;
+      console.log('[NotificationService] Khởi tạo hệ thống thông báo thành công');
     } catch (err) {
       console.warn('[NotificationService] Cảnh báo LocalNotifications:', err);
     }
-
-    // 2. Khởi tạo Push Notifications (An toàn nếu chưa có google-services.json)
-    try {
-      if (Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('PushNotifications')) {
-        const pushStatus = await PushNotifications.checkPermissions();
-        if (pushStatus.receive === 'granted') {
-          await PushNotifications.register().catch((e) => {
-            console.warn('[NotificationService] Bỏ qua đăng ký FCM Push (Chưa gắn Firebase):', e);
-          });
-        }
-      }
-    } catch (err) {
-      console.warn('[NotificationService] Cảnh báo PushNotifications:', err);
-    }
-
-    this.isInitialized = true;
-    console.log('[NotificationService] Khởi tạo hệ thống thông báo thành công');
   }
 
   /**
