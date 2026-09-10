@@ -1,6 +1,7 @@
 // Dịch vụ Đồng Bộ Thông Minh Ngoại Tuyến (Sync Service)
 import { getSyncQueue, removeFromSyncQueue, updateSurveyStatus, updateSyncQueueItem } from './indexedDB';
 import { ApiService } from './api';
+import { NotificationService } from './notificationService';
 import { SyncStatus } from '../types';
 
 export type SyncEventType =
@@ -144,6 +145,11 @@ class SyncService {
 
     this.isSyncing = false;
     this.notify('sync-completed', { total: queue.length, synced: syncedCount, failed: failedCount });
+
+    if (syncedCount > 0) {
+      NotificationService.sendSyncSuccessNotification(syncedCount);
+    }
+
     return { success: true, syncedCount, failedCount };
   }
 }

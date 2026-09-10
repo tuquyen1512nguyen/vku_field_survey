@@ -1,4 +1,5 @@
-// Dịch vụ định vị vệ tinh GPS Hiện Trường VKU
+// Dịch vụ định vị vệ tinh GPS Hiện Trường VKU (Capacitor Native)
+import { Geolocation } from '@capacitor/geolocation';
 import { GPSCoordinates, CampusLocation } from '../types';
 
 // Tọa độ các mốc trọng điểm tại khuôn viên Đại học Việt - Hàn (VKU)
@@ -57,35 +58,50 @@ export const VKU_CAMPUS_LOCATIONS: CampusLocation[] = [
 
 export class LocationService {
   /**
-   * Lấy vị trí GPS hiện tại với độ chính xác cao
+   * Lấy vị trí GPS hiện tại bằng Capacitor Geolocation Plugin
    */
   static async getCurrentLocation(highAccuracy = true): Promise<GPSCoordinates> {
-    if (!('geolocation' in navigator)) {
-      return this.getFallbackVKUCoords('Thiết bị không hỗ trợ Geolocation API');
-    }
+    try {
+      // Yêu cầu cấp quyền định vị nếu chưa cấp
+      const status = await Geolocation.checkPermissions();
+      if (status.location !== 'granted') {
+        await Geolocation.requestPermissions();
+      }
 
-    return new Promise((resolve) => {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          resolve({
-            latitude: pos.coords.latitude,
-            longitude: pos.coords.longitude,
-            accuracy: Math.round(pos.coords.accuracy),
-            timestamp: pos.timestamp,
-            source: 'Vệ tinh GPS thực địa'
-          });
-        },
-        (err) => {
-          console.warn('[LocationService] Lỗi GPS:', err.message);
-          resolve(this.getFallbackVKUCoords('Tọa độ VKU hiệu chuẩn (Tín hiệu yếu trong nhà/hầm)'));
-        },
-        {
-          enableHighAccuracy: highAccuracy,
-          timeout: 8000,
-          maximumAge: 30000
-        }
-      );
-    });
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: highAccuracy,
+        timeout: 8000,
+        maximumAge: 30000
+      });
+
+      return {
+        latitude: pos.coords.latitude,
+        longitude: pos.coords.longitude,
+        accuracy: Math.round(pos.coords.accuracy),
+        timestamp: pos.timestamp,
+        source: 'Capacitor GPS Vệ tinh Native'
+      };
+    } catch (err: unknown) {
+      console.warn('[LocationService] Lỗi Capacitor Geolocation, sử dụng fallback:', err);
+      if (typeof navigator !== 'undefined' && 'geolocation' in navigator) {
+        return new Promise((resolve) => {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              resolve({
+                latitude: pos.coords.latitude,
+                longitude: pos.coords.longitude,
+                accuracy: Math.round(pos.coords.accuracy),
+                timestamp: pos.timestamp,
+                source: 'Vệ tinh GPS (Web Fallback)'
+              });
+            },
+            () => resolve(this.getFallbackVKUCoords('Tọa độ VKU hiệu chuẩn (Tín hiệu yếu trong nhà/hầm)')),
+            { enableHighAccuracy: highAccuracy, timeout: 5000, maximumAge: 30000 }
+          );
+        });
+      }
+      return this.getFallbackVKUCoords('Tọa độ VKU hiệu chuẩn (Tín hiệu yếu trong nhà/hầm)');
+    }
   }
 
   /**

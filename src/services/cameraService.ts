@@ -1,7 +1,46 @@
-// Dịch vụ Máy ảnh Hiện Trường Chuyên Nghiệp (Camera Service & Watermark Overlay)
+import { Camera, CameraResultType, CameraSource } from '@capacitor/camera';
 import { SurveyPhoto, GPSCoordinates } from '../types';
 
 export class CameraService {
+  /**
+   * Chụp ảnh trực tiếp bằng Capacitor Camera Plugin (Android Native & Web fallback)
+   */
+  static async captureNativePhoto(
+    metadata: {
+      surveyId?: string;
+      gps?: GPSCoordinates;
+      locationName?: string;
+    },
+    source: CameraSource = CameraSource.Camera
+  ): Promise<SurveyPhoto> {
+    try {
+      const image = await Camera.getPhoto({
+        quality: 90,
+        allowEditing: false,
+        resultType: CameraResultType.Base64,
+        source: source
+      });
+
+      if (!image.base64String) {
+        throw new Error('Không nhận được dữ liệu ảnh từ Camera Plugin');
+      }
+
+      const mimeType = image.format ? `image/${image.format}` : 'image/jpeg';
+      const byteCharacters = atob(image.base64String);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+
+      return await this.processPhotoWithMetadata(blob, metadata);
+    } catch (err) {
+      console.warn('[CameraService] Capacitor Camera error/cancelled:', err);
+      throw err;
+    }
+  }
+
   /**
    * Nén ảnh và vẽ lớp thông tin giám định hiện trường (Watermark Overlay)
    */

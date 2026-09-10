@@ -9,6 +9,7 @@ import { CampusMap } from './pages/CampusMap';
 import { RecordsTimeline } from './pages/RecordsTimeline';
 import { ProfileSettings } from './pages/ProfileSettings';
 import { syncService } from './services/syncService';
+import { NotificationService } from './services/notificationService';
 import {
   getAllSurveys,
   getSyncQueue,
@@ -73,6 +74,7 @@ export function App() {
 
   useEffect(() => {
     refreshAllData();
+    NotificationService.init();
 
     // Lắng nghe sự kiện đồng bộ
     const unsubscribe = syncService.subscribe((event) => {

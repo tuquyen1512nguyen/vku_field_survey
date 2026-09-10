@@ -1,5 +1,6 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Camera, X, RefreshCw, Check, AlertCircle } from 'lucide-react';
+import { Camera as CameraIcon, X, RefreshCw, Check, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { CameraSource } from '@capacitor/camera';
 import { CameraService } from '../services/cameraService';
 import { GPSCoordinates, SurveyPhoto } from '../types';
 
@@ -19,7 +20,6 @@ export const CameraModal: React.FC<CameraModalProps> = ({
   surveyId,
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [previewPhoto, setPreviewPhoto] = useState<SurveyPhoto | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -27,14 +27,36 @@ export const CameraModal: React.FC<CameraModalProps> = ({
 
   useEffect(() => {
     if (isOpen && !previewPhoto) {
-      startCamera();
+      // Auto trigger native camera when modal opens
+      handleNativeCapture(CameraSource.Camera);
     }
     return () => {
       stopCamera();
     };
   }, [isOpen]);
 
-  const startCamera = async () => {
+  const handleNativeCapture = async (source: CameraSource = CameraSource.Camera) => {
+    setIsProcessing(true);
+    setCameraError(null);
+    try {
+      const processed = await CameraService.captureNativePhoto(
+        { surveyId, gps },
+        source
+      );
+      stopCamera();
+      setPreviewPhoto(processed);
+    } catch (err: unknown) {
+      console.warn('[CameraModal] Lỗi mở Native Camera, thử fallback Web:', err);
+      // Fallback to web getUserMedia if Capacitor native camera wasn't completed
+      if (!previewPhoto) {
+        startWebCamera();
+      }
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const startWebCamera = async () => {
     setCameraError(null);
     try {
       if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
@@ -47,11 +69,11 @@ export const CameraModal: React.FC<CameraModalProps> = ({
           videoRef.current.srcObject = mediaStream;
         }
       } else {
-        setCameraError('Trình duyệt không hỗ trợ truy cập Camera trực tiếp');
+        setCameraError('Thiết bị không hỗ trợ truy cập Camera trực tiếp');
       }
     } catch (err: unknown) {
-      console.warn('[CameraModal] Lỗi mở camera:', err);
-      setCameraError('Không thể mở camera (quyền bị từ chối hoặc đang dùng ứng dụng khác)');
+      console.warn('[CameraModal] Lỗi mở Web camera:', err);
+      setCameraError('Không thể mở camera. Vui lòng cấp quyền truy cập máy ảnh.');
     }
   };
 
@@ -92,25 +114,6 @@ export const CameraModal: React.FC<CameraModalProps> = ({
     }
   };
 
-  const handleFileFallback = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsProcessing(true);
-    try {
-      const processed = await CameraService.processPhotoWithMetadata(file, {
-        surveyId,
-        gps,
-      });
-      stopCamera();
-      setPreviewPhoto(processed);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
   const handleConfirm = () => {
     if (previewPhoto) {
       onPhotoCaptured(previewPhoto);
@@ -121,7 +124,7 @@ export const CameraModal: React.FC<CameraModalProps> = ({
 
   const handleRetake = () => {
     setPreviewPhoto(null);
-    startCamera();
+    handleNativeCapture(CameraSource.Camera);
   };
 
   if (!isOpen) return null;
@@ -131,9 +134,9 @@ export const CameraModal: React.FC<CameraModalProps> = ({
       {/* 1. Header Bar */}
       <div className="flex items-center justify-between text-white py-2">
         <div className="flex items-center gap-2">
-          <Camera className="w-5 h-5 text-electric-400" />
+          <CameraIcon className="w-5 h-5 text-electric-400" />
           <span className="font-mono text-xs tracking-wider text-slate-300">
-            VKU FIELD HUD // {surveyId || 'SUR-NEW'}
+            VKU NATIVE CAMERA HUD // {surveyId || 'SUR-NEW'}
           </span>
         </div>
         <button
@@ -155,7 +158,7 @@ export const CameraModal: React.FC<CameraModalProps> = ({
             />
             <div className="absolute top-4 left-4 bg-emerald-500/90 text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1 shadow-lg">
               <Check className="w-3.5 h-3.5" />
-              <span>ẢNH ĐÃ ĐÓNG DẤU TỌA ĐỘ</span>
+              <span>ẢNH ĐÃ ĐÓNG DẤU TỌA ĐỘ (CAPACITOR NATIVE)</span>
             </div>
           </div>
         ) : (
@@ -164,12 +167,20 @@ export const CameraModal: React.FC<CameraModalProps> = ({
               <div className="flex flex-col items-center justify-center text-center p-6 text-slate-300 max-w-xs">
                 <AlertCircle className="w-12 h-12 text-amber-400 mb-3" />
                 <p className="text-sm font-semibold mb-4">{cameraError}</p>
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-5 py-2.5 rounded-xl bg-electric-500 text-white font-bold text-sm shadow-md hover:bg-electric-600 transition-colors"
-                >
-                  Chọn hoặc chụp từ thiết bị
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleNativeCapture(CameraSource.Camera)}
+                    className="px-4 py-2.5 rounded-xl bg-electric-500 text-white font-bold text-xs shadow-md hover:bg-electric-600 transition-colors"
+                  >
+                    Mở Máy ảnh Native
+                  </button>
+                  <button
+                    onClick={() => handleNativeCapture(CameraSource.Photos)}
+                    className="px-4 py-2.5 rounded-xl bg-white/20 text-white font-bold text-xs hover:bg-white/30 transition-colors"
+                  >
+                    Chọn từ Thư viện
+                  </button>
+                </div>
               </div>
             ) : (
               <>
@@ -196,18 +207,9 @@ export const CameraModal: React.FC<CameraModalProps> = ({
             )}
           </>
         )}
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          capture="environment"
-          onChange={handleFileFallback}
-          className="hidden"
-        />
       </div>
 
-      {/* 3. Bottom Action Controls (One-handed design) */}
+      {/* 3. Bottom Action Controls */}
       <div className="py-3 flex items-center justify-around">
         {previewPhoto ? (
           <div className="flex gap-4 w-full max-w-sm">
@@ -229,23 +231,26 @@ export const CameraModal: React.FC<CameraModalProps> = ({
         ) : (
           <div className="flex items-center justify-between w-full max-w-xs">
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="p-3 rounded-full bg-white/10 text-white text-xs font-semibold hover:bg-white/20"
-              title="Chọn tệp"
+              onClick={() => handleNativeCapture(CameraSource.Photos)}
+              className="p-3 rounded-full bg-white/10 text-white text-xs font-semibold hover:bg-white/20 flex items-center gap-1"
+              title="Chọn từ thư viện"
             >
-              Thư viện
+              <ImageIcon className="w-4 h-4" />
+              <span>Thư viện</span>
             </button>
             <button
-              onClick={captureFrame}
-              disabled={isProcessing || !!cameraError}
+              onClick={() => handleNativeCapture(CameraSource.Camera)}
+              disabled={isProcessing}
               className="w-18 h-18 rounded-full border-4 border-white p-1.5 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform disabled:opacity-50"
+              title="Chụp ảnh Native"
             >
               <div className="w-14 h-14 rounded-full bg-electric-400 shadow-hud" />
             </button>
-            <div className="w-12" /> {/* Spacer for balance */}
+            <div className="w-12" />
           </div>
         )}
       </div>
     </div>
   );
 };
+
