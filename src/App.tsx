@@ -34,13 +34,18 @@ export function App() {
   const [isSyncCenterOpen, setIsSyncCenterOpen] = useState<boolean>(false);
   const [selectedDetailSurvey, setSelectedDetailSurvey] = useState<Survey | null>(null);
   const [settings, setSettings] = useState<UserSettings>({
-    darkMode: false,
+    darkMode: true,
     autoSync: true,
     highAccuracyGPS: true,
     auditorName: 'Nguyễn Văn An',
     studentId: '21IT001',
-    department: 'Khoa Kỹ thuật Máy tính & Điện tử'
+    department: 'Đội Khảo Sát Số 1 - Khoa CNTT',
+    auditorPhone: '0905123456',
+    googleScriptUrl: '',
+    publicSheetUrl: '',
+    autoSyncGoogleSheet: true,
   });
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
 
@@ -52,7 +57,7 @@ export function App() {
       const draft = await getDraft();
       const userSets = await getSettings();
 
-      // Nếu chưa có dữ liệu, tự động nạp 3 dữ liệu khảo sát thực địa mẫu của VKU
+      // Nếu chưa có dữ liệu, tự động nạp 4 mẫu dữ liệu thực tế
       if (all.length === 0) {
         await seedSampleSurveys();
         return;
@@ -61,9 +66,10 @@ export function App() {
       setSurveys(all);
       setPendingCount(queue.length);
       setActiveDraft(draft);
-      setSettings(userSets);
+      if (userSets) {
+        setSettings((prev) => ({ ...prev, ...userSets }));
+      }
 
-      // Đếm số lượng hoàn thành hôm nay
       const todayStr = new Date().toDateString();
       const todayCount = all.filter((s) => new Date(s.createdAt).toDateString() === todayStr).length;
       setCompletedTodayCount(todayCount);
@@ -76,7 +82,6 @@ export function App() {
     refreshAllData();
     NotificationService.init();
 
-    // Lắng nghe sự kiện đồng bộ
     const unsubscribe = syncService.subscribe((event) => {
       setIsOnline(syncService.isOnline());
       if (event === 'sync-started') {
@@ -89,7 +94,6 @@ export function App() {
       }
     });
 
-    // Bắt sự kiện trước khi cài đặt PWA
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -98,7 +102,7 @@ export function App() {
     return unsubscribe;
   }, []);
 
-  // 2. Nạp dữ liệu thực địa mẫu của trường VKU
+  // 2. Nạp dữ liệu thực địa mẫu giống vku-field-survey.pages.dev
   const seedSampleSurveys = async () => {
     const createSamplePhoto = (text: string, color: string) => {
       const canvas = document.createElement('canvas');
@@ -113,7 +117,7 @@ export function App() {
         ctx.textAlign = 'center';
         ctx.fillText(text, 300, 180);
         ctx.font = '14px "JetBrains Mono", monospace';
-        ctx.fillText('VKU FIELD MISSION // AUDIT PHOTO', 300, 220);
+        ctx.fillText('VKU FIELD SURVEY // EVIDENCT PHOTO', 300, 220);
         ctx.fillText(new Date().toLocaleString('vi-VN'), 300, 250);
       }
       return canvas.toDataURL('image/jpeg', 0.8);
@@ -122,15 +126,25 @@ export function App() {
     const samples: Survey[] = [
       {
         id: 'SUR-00101',
-        building: 'Khu A',
-        floor: 'Tầng 1',
-        room: 'A.102',
+        auditorName: 'Nguyễn Văn An',
+        studentId: '21IT001',
+        department: 'Đội Khảo Sát Số 1 - Khoa CNTT',
+        auditorPhone: '0905123456',
+        targetName: 'Trần Thị Mai',
+        targetId: '22IT045',
+        targetPhone: '0914111222',
+        targetType: 'Sinh viên VKU',
+        building: 'Khu B',
+        floor: 'Tầng 2',
+        room: 'B204',
         facilityType: 'Classroom',
+        topic: 'Cơ sở vật chất & Thiết bị phòng học',
         condition: 'NEEDS_ATTENTION',
-        notes: 'Máy chiếu Panasonic bị mờ và nhấp nháy liên tục sau 15 phút mở máy, cần bảo dưỡng hoặc thay cụm đèn.',
-        photos: [{ id: 'p-1', base64: createSamplePhoto('PHÒNG A.102 - MÁY CHIẾU MỜ', '#0369a1'), timestamp: Date.now() - 7200000 }],
-        latitude: 15.975412,
-        longitude: 108.25221,
+        ratingStars: 2,
+        notes: 'Máy chiếu phòng B204 chập chờn, bóng đèn mờ và quạt trần kêu to. Cần bảo trì trước đợt thi cuối kỳ.',
+        photos: [{ id: 'p-1', base64: createSamplePhoto('PHÒNG B204 - MÁY CHIẾU CHẬP CHỜN', '#0369a1'), timestamp: Date.now() - 7200000 }],
+        latitude: 15.97495,
+        longitude: 108.25164,
         accuracy: 5,
         createdAt: new Date(Date.now() - 7200000).toISOString(),
         updatedAt: new Date(Date.now() - 7200000).toISOString(),
@@ -138,15 +152,25 @@ export function App() {
       },
       {
         id: 'SUR-00102',
-        building: 'Khu K',
+        auditorName: 'Nguyễn Văn An',
+        studentId: '21IT001',
+        department: 'Đội Khảo Sát Số 1 - Khoa CNTT',
+        auditorPhone: '0905123456',
+        targetName: 'ThS. Hoàng Minh Đức',
+        targetId: 'GV-0012',
+        targetPhone: '0905888999',
+        targetType: 'Giảng viên / Cán bộ',
+        building: 'Khu C',
         floor: 'Tầng 3',
-        room: 'K.301',
+        room: 'C301',
         facilityType: 'Laboratory',
-        condition: 'DAMAGED',
-        notes: 'Máy điều hòa chảy nước nhỏ giọt xuống dãy bàn máy tính số 3, quạt gió rung lắc mạnh gây ồn.',
-        photos: [{ id: 'p-2', base64: createSamplePhoto('KHU K.301 - ĐIỀU HÒA HỎNG', '#b91c1c'), timestamp: Date.now() - 3600000 }],
-        latitude: 15.97489,
-        longitude: 108.253102,
+        topic: 'Thiết bị Lab & Mạng LAN',
+        condition: 'GOOD',
+        ratingStars: 5,
+        notes: 'Mạng WiFi chuyên dụng cho lab hoạt động ổn định, tuy nhiên một số máy tính trạm bàn 14 và 18 bị lỏng dây mạng LAN.',
+        photos: [{ id: 'p-2', base64: createSamplePhoto('LAB C301 - MẠNG LAB ỔN ĐỊNH', '#047857'), timestamp: Date.now() - 3600000 }],
+        latitude: 15.97582,
+        longitude: 108.2531,
         accuracy: 8,
         createdAt: new Date(Date.now() - 3600000).toISOString(),
         updatedAt: new Date(Date.now() - 3600000).toISOString(),
@@ -154,19 +178,55 @@ export function App() {
       },
       {
         id: 'SUR-00103',
-        building: 'Khu V',
-        floor: 'Tầng hầm',
-        room: 'V.B02',
+        auditorName: 'Lê Thị Bảo',
+        studentId: '22IT099',
+        department: 'Đội Khảo Sát Số 2 - Đoàn Hội',
+        auditorPhone: '0935333444',
+        targetName: 'Bác Nguyễn Thị Hạnh',
+        targetId: 'NT-1204',
+        targetPhone: '0905777666',
+        targetType: 'Chủ nhà trọ / Dân cư',
+        building: 'Khu vực ngoài trường',
+        floor: 'Tầng 1',
+        room: 'Tổ 12 Hòa Quý',
         facilityType: 'Other',
+        topic: 'An ninh trật tự khu trọ sinh viên',
         condition: 'GOOD',
-        notes: 'Hệ thống điện và tủ biến áp tầng hầm Khu V hoạt động rất ổn định, nhiệt độ phòng kỹ thuật đạt chuẩn.',
-        photos: [{ id: 'p-3', base64: createSamplePhoto('TẦNG HẦM KHU V - HẠ TẦNG ĐIỆN TỐT', '#047857'), timestamp: Date.now() - 1200000 }],
+        ratingStars: 5,
+        notes: 'Sinh viên VKU trọ tại khu vực chấp hành tốt an ninh trật tự, tham gia tích cực hoạt động vệ sinh tuyến đường văn minh đô thị.',
+        photos: [{ id: 'p-3', base64: createSamplePhoto('KHU TRỌ KHU VỰC HÒA QUÝ - AN NINH TỐT', '#4338ca'), timestamp: Date.now() - 1200000 }],
         latitude: 15.976105,
         longitude: 108.251944,
         accuracy: 12,
         createdAt: new Date(Date.now() - 1200000).toISOString(),
         updatedAt: new Date(Date.now() - 1200000).toISOString(),
         syncStatus: 'pending',
+      },
+      {
+        id: 'SUR-00104',
+        auditorName: 'Trần Minh Tuấn',
+        studentId: '20IT088',
+        department: 'Đội Khảo Sát Số 3 - Quan Hệ Doanh Nghiệp',
+        auditorPhone: '0988666555',
+        targetName: 'Công ty CP Công nghệ Enouvo IT',
+        targetId: 'DN-ENOUVO',
+        targetPhone: '02363111222',
+        targetType: 'Doanh nghiệp tuyển dụng',
+        building: 'Khu A',
+        floor: 'Tầng 1',
+        room: 'Hội trường A',
+        facilityType: 'Other',
+        topic: 'Đánh giá chất lượng thực tập sinh',
+        condition: 'GOOD',
+        ratingStars: 5,
+        notes: 'Đánh giá cao năng lực lập trình và thái độ học hỏi của sinh viên thực tập VKU. Mong muốn tiếp tục tuyển dụng 20 vị trí Frontend/Backend.',
+        photos: [{ id: 'p-4', base64: createSamplePhoto('HỘI THẢO DOANH NGHIỆP ENOUVO - VKU', '#b91c1c'), timestamp: Date.now() - 600000 }],
+        latitude: 15.975412,
+        longitude: 108.25221,
+        accuracy: 6,
+        createdAt: new Date(Date.now() - 600000).toISOString(),
+        updatedAt: new Date(Date.now() - 600000).toISOString(),
+        syncStatus: 'synced',
       }
     ];
 
@@ -191,7 +251,7 @@ export function App() {
   };
 
   const handleClearData = async () => {
-    if (confirm('Bạn có chắc chắn muốn dọn sạch cơ sở dữ liệu IndexedDB?')) {
+    if (confirm('CẢNH BÁO: Bạn có chắc chắn muốn xóa TOÀN BỘ dữ liệu khảo sát trong bộ nhớ máy (IndexedDB)?')) {
       await clearAllDatabase();
       await refreshAllData();
       alert('Đã xóa sạch dữ liệu IndexedDB!');
@@ -212,8 +272,8 @@ export function App() {
   };
 
   return (
-    <div className={`min-h-screen bg-canvas text-navy-900 ${settings.darkMode ? 'dark bg-navy-900 text-white' : ''}`}>
-      {/* Navigation (Desktop Sidebar & Mobile Bottom Tabs) */}
+    <div className="min-h-screen bg-slate-950 text-slate-100 dark">
+      {/* Navigation */}
       <Navigation
         activeTab={activeTab}
         onTabChange={(tab) => {
@@ -223,19 +283,19 @@ export function App() {
         pendingCount={pendingCount}
       />
 
-      {/* Main Content Area (Desktop Offset by 64 Tailwind w-64) */}
+      {/* Main Content */}
       <div className="md:pl-64 flex flex-col min-h-screen">
-        {/* Offline Status Badge & Floating Chip Bar */}
+        {/* Offline Badge Header */}
         <OfflineBadge
           isOnline={isOnline}
           isSyncing={isSyncing}
           pendingCount={pendingCount}
           isSimulatedOffline={isSimulatedOffline}
+          googleScriptUrl={settings.googleScriptUrl}
           onToggleSimulate={handleToggleSimulate}
           onOpenSyncCenter={() => setIsSyncCenterOpen(true)}
         />
 
-        {/* View Pages (max-width ~1400px as per specification) */}
         <main className="flex-1 w-full max-w-[1400px] mx-auto p-4 sm:p-6 md:p-8">
           {activeTab === 'home' && (
             <HomeMission
@@ -246,6 +306,7 @@ export function App() {
               completedTodayCount={completedTodayCount}
               activeDraft={activeDraft}
               recentSurveys={surveys}
+              settings={settings}
               onSelectSurvey={(s) => setSelectedDetailSurvey(s)}
             />
           )}
@@ -254,6 +315,7 @@ export function App() {
             <SurveyForm
               onBack={() => setActiveTab('home')}
               initialDraft={activeDraft}
+              settings={settings}
               onSurveyCompleted={() => {
                 refreshAllData();
                 setActiveTab('records');
@@ -271,9 +333,11 @@ export function App() {
           {activeTab === 'records' && (
             <RecordsTimeline
               surveys={surveys}
+              settings={settings}
               onSelectSurvey={(s) => setSelectedDetailSurvey(s)}
               onOpenSyncCenter={() => setIsSyncCenterOpen(true)}
               pendingCount={pendingCount}
+              onRefreshData={refreshAllData}
             />
           )}
 
@@ -309,4 +373,3 @@ export function App() {
 }
 
 export default App;
-

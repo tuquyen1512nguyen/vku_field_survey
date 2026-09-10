@@ -210,17 +210,31 @@ export async function updateSyncQueueItem(item: SyncQueueItem): Promise<void> {
   });
 }
 
+export async function deleteSurvey(id: string): Promise<void> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(['surveys', 'photos'], 'readwrite');
+    tx.objectStore('surveys').delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 // ==========================================
 // 4. CÀI ĐẶT & THỐNG KÊ (SETTINGS & STATS)
 // ==========================================
 
 export const DEFAULT_SETTINGS: UserSettings = {
-  darkMode: false,
+  darkMode: true,
   autoSync: true,
   highAccuracyGPS: true,
   auditorName: 'Nguyễn Văn An',
   studentId: '21IT001',
-  department: 'Khoa Kỹ thuật Máy tính & Điện tử'
+  department: 'Khoa Kỹ thuật Máy tính & Điện tử',
+  auditorPhone: '0905123456',
+  googleScriptUrl: '',
+  publicSheetUrl: '',
+  autoSyncGoogleSheet: true
 };
 
 export async function getSettings(): Promise<UserSettings> {

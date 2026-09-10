@@ -1,28 +1,28 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="vi" class="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <title>VKU Field Survey — Offline-First Campus Infrastructure PWA</title>
+    <title>VKU Field Survey — Khảo Sát Thực Địa & Đồng Bộ Google Sheets</title>
 
     <!-- PWA & SEO Meta Tags -->
-    <meta name="description" content="VKU Field Mission — Ứng dụng PWA khảo sát cơ sở vật chất ngoại tuyến tại Đại học VKU" />
-    <meta name="theme-color" content="#0b132b" />
+    <meta name="description" content="Ứng dụng khảo sát thực địa offline-first dành cho điều tra viên VKU, tự động đồng bộ lên Google Sheets công khai." />
+    <meta name="theme-color" content="#0284c7" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-title" content="VKU Mission" />
+    <meta name="apple-mobile-web-app-title" content="VKU Survey" />
 
     <!-- Web App Manifest & Icons -->
     <link rel="manifest" href="/manifest.json" />
     <link rel="icon" type="image/svg+xml" href="/icons/icon-192.svg" />
     <link rel="apple-touch-icon" href="/icons/icon-192.svg" />
 
-    <!-- Google Fonts: Plus Jakarta Sans, Inter, JetBrains Mono -->
+    <!-- Google Fonts: Inter & JetBrains Mono -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
   </head>
-  <body class="bg-[#f8fafc] text-[#0f172a] select-none antialiased">
+  <body class="bg-slate-950 text-slate-100 antialiased min-h-screen selection:bg-sky-500 selection:text-white">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

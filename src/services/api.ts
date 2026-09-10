@@ -1,31 +1,61 @@
-// API Service Giả Lập Máy Chủ Trung Tâm VKU (Mock Cloud API)
+// API Service Đồng Bộ Dữ Liệu Thực Địa VKU & Google Sheets
 import { Survey } from '../types';
+import { getSettings } from './indexedDB';
 
 export class ApiService {
   /**
-   * Giả lập gửi bản ghi khảo sát lên máy chủ đám mây VKU
+   * Tải bản ghi khảo sát lên Google Sheets qua Apps Script Web App Endpoint
    */
   static async uploadSurvey(survey: Survey): Promise<{ success: boolean; message: string; remoteId: string }> {
-    // Giả lập độ trễ mạng thực tế 600ms
-    await new Promise((resolve) => setTimeout(resolve, 600));
+    const settings = await getSettings();
+    const endpoint = settings.googleScriptUrl?.trim();
 
-    // Thử gửi qua Service Worker / Mock API nếu có
-    try {
-      const res = await fetch('/api/surveys/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(survey)
-      });
-      if (res.ok) {
-        return await res.json();
+    if (endpoint && endpoint.startsWith('http')) {
+      try {
+        console.log('[ApiService] Đang đẩy phiếu lên Google Sheets:', endpoint);
+        const response = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify(survey),
+          redirect: 'follow'
+        });
+
+        if (response.ok) {
+          const resJson = await response.json().catch(() => ({ result: 'success' }));
+          return {
+            success: true,
+            message: 'Đồng bộ lên Google Sheets thành công!',
+            remoteId: resJson.id || survey.id
+          };
+        }
+      } catch (err: unknown) {
+        console.warn('[ApiService] Lỗi gửi Google Apps Script, thử mode no-cors:', err);
+        try {
+          await fetch(endpoint, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+            body: JSON.stringify(survey)
+          });
+          return {
+            success: true,
+            message: 'Đã gửi phiếu lên Google Sheets',
+            remoteId: survey.id
+          };
+        } catch (noCorsErr) {
+          console.error('[ApiService] Google Sheets sync failed:', noCorsErr);
+          throw new Error('Chưa thể kết nối đến Google Sheets Web App Endpoint.');
+        }
       }
-    } catch {
-      // Fallback giả lập thành công trên client
     }
+
+    // Nếu chưa cấu hình Google Sheets URL, giả lập tải lên đám mây thành công
+    console.log('[ApiService] Chưa cấu hình link Google Sheets, giả lập lưu máy chủ thành công');
+    await new Promise((resolve) => setTimeout(resolve, 500));
 
     return {
       success: true,
-      message: 'Lưu trữ máy chủ trường thành công',
+      message: 'Đã giả lập đồng bộ máy chủ (Cần dán Web App URL trong Cài đặt)',
       remoteId: 'CLOUD-' + survey.id
     };
   }

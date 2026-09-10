@@ -1,8 +1,7 @@
 import React from 'react';
-import { Play, ArrowRight, MapPin, Wifi, WifiOff, Clock, ShieldCheck, FileEdit, Database } from 'lucide-react';
-import { FieldStatusRing } from '../components/FieldStatusRing';
+import { PlusCircle, ArrowRight, TableProperties, Sheet, ShieldCheck, FileEdit, Database, CheckCircle2, Clock, AlertTriangle } from 'lucide-react';
 import { SurveyCard } from '../components/SurveyCard';
-import { Survey, SurveyDraft, TabType } from '../types';
+import { Survey, SurveyDraft, TabType, UserSettings } from '../types';
 
 interface HomeMissionProps {
   onStartSurvey: () => void;
@@ -12,6 +11,7 @@ interface HomeMissionProps {
   completedTodayCount: number;
   activeDraft: SurveyDraft | null;
   recentSurveys: Survey[];
+  settings: UserSettings;
   onSelectSurvey: (survey: Survey) => void;
 }
 
@@ -23,155 +23,155 @@ export const HomeMission: React.FC<HomeMissionProps> = ({
   completedTodayCount,
   activeDraft,
   recentSurveys,
+  settings,
   onSelectSurvey,
 }) => {
+  const syncedCount = recentSurveys.filter((s) => s.syncStatus === 'synced').length;
+  const attentionCount = recentSurveys.filter(
+    (s) => s.condition === 'NEEDS_ATTENTION' || s.condition === 'DAMAGED' || (s.ratingStars && s.ratingStars <= 2)
+  ).length;
+
   return (
-    <div className="space-y-6 pb-6">
-      {/* 1. Hero Section — Mission Exploration Style */}
-      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-navy-800 via-navy-900 to-navy-800 text-white p-6 md:p-8 shadow-2xl border border-navy-700/80">
-        {/* Subtle background tech grid */}
+    <div className="space-y-6 pb-6 animate-fadeIn">
+      {/* 1. Hero Section — Space Executive Banner */}
+      <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 text-white p-6 md:p-8 shadow-2xl border border-slate-800">
         <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#38bdf8_1px,transparent_1px)] [background-size:16px_16px]" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="max-w-xl space-y-3">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-electric-500/20 border border-electric-400/30 text-electric-300 text-xs font-bold font-mono tracking-wider uppercase">
-              <span>🌟 VKU FIELD EXPEDITION</span>
+          <div className="max-w-2xl space-y-3">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 border border-sky-400/30 text-sky-300 text-xs font-bold font-mono tracking-wider uppercase">
+              <span>🌟 Không gian điều hành khảo sát</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight leading-tight">
-              Khảo sát cơ sở vật chất khuôn viên VKU mọi lúc, <span className="text-electric-400">kể cả khi offline</span>.
+              VKU Field Survey — <span className="text-sky-400">Khảo Sát Thực Địa & Đồng Bộ Google Sheets</span>
             </h2>
             <p className="text-slate-300 text-sm font-medium leading-relaxed">
-              Thu thập hình ảnh hiện trường, tọa độ GPS vệ tinh và ghi nhận hư hỏng tại tầng hầm, phòng học cách âm không có mạng.
+              Ghi nhận hiện trường nhanh, lưu trữ an toàn ngoại tuyến khi mất mạng và tự động đẩy dữ liệu lên Google Sheets công khai khi sẵn sàng.
             </p>
           </div>
 
-          {/* Field Status Ring */}
-          <div className="flex items-center gap-4 bg-navy-700/40 backdrop-blur-md p-4 rounded-2xl border border-white/10 self-start md:self-auto">
-            <FieldStatusRing completedToday={completedTodayCount} targetToday={10} />
-            <div className="space-y-1">
-              <div className="text-xs font-bold text-slate-300 uppercase tracking-wider font-mono">TIẾN ĐỘ HÔM NAY</div>
-              <div className="text-xs text-slate-400">Chỉ tiêu: 10 phòng/ngày</div>
-              <div className="text-[11px] text-field-400 font-semibold font-mono">
-                {completedTodayCount >= 10 ? '✓ ĐẠT MỤC TIÊU' : `Còn ${10 - completedTodayCount} điểm khảo sát`}
-              </div>
-            </div>
-          </div>
-        </div>
+          <div className="flex flex-col sm:flex-row gap-3 self-start md:self-auto">
+            <button
+              onClick={onStartSurvey}
+              className="px-6 py-3.5 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-sky-600/30 hover:scale-[1.02] active:scale-[0.98] transition-all"
+            >
+              <PlusCircle className="w-5 h-5" />
+              <span>Bắt Đầu Khảo Sát</span>
+            </button>
 
-        {/* 2. HUD Telemetry Bar */}
-        <div className="mt-6 pt-5 border-t border-white/10 grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="flex items-center gap-2.5">
-            <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isOnline ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}`}>
-              {isOnline ? <Wifi className="w-4 h-4" /> : <WifiOff className="w-4 h-4" />}
-            </div>
-            <div>
-              <div className="text-[10px] font-mono uppercase text-slate-400">KẾT NỐI MẠNG</div>
-              <div className="text-xs font-bold font-mono">{isOnline ? 'ONLINE ● CLOUD' : 'OFFLINE ● LOCAL'}</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-electric-500/20 text-electric-400 flex items-center justify-center">
-              <MapPin className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-[10px] font-mono uppercase text-slate-400">VỆ TINH GPS</div>
-              <div className="text-xs font-bold font-mono">VKU CAMPUS READY</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center">
-              <Clock className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-[10px] font-mono uppercase text-slate-400">CHỜ ĐỒNG BỘ</div>
-              <div className="text-xs font-bold font-mono">{pendingCount} BẢN GHI</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-field-500/20 text-field-400 flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-[10px] font-mono uppercase text-slate-400">INDEXEDDB SAFE</div>
-              <div className="text-xs font-bold font-mono">BẢO TOÀN 100%</div>
-            </div>
+            {settings.publicSheetUrl ? (
+              <a
+                href={settings.publicSheetUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="px-5 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-emerald-400 font-bold text-sm flex items-center justify-center gap-2 border border-slate-700 shadow-sm transition-all"
+              >
+                <Sheet className="w-4 h-4" />
+                <span>Mở Google Sheet</span>
+              </a>
+            ) : (
+              <button
+                onClick={() => onNavigateTab('profile')}
+                className="px-5 py-3.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-sm flex items-center justify-center gap-2 border border-slate-700 shadow-sm transition-all"
+              >
+                <Sheet className="w-4 h-4 text-slate-400" />
+                <span>Gắn Google Sheet</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* 3. Big CTA — Mission Start Button */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <button
-          onClick={onStartSurvey}
-          className="flex-1 py-4 px-6 rounded-2xl bg-gradient-to-r from-electric-500 via-electric-600 to-electric-500 hover:from-electric-600 hover:to-electric-700 text-white font-extrabold text-base tracking-wide flex items-center justify-center gap-3 shadow-lg shadow-electric-500/30 hover:scale-[1.01] active:scale-[0.99] transition-all"
-        >
-          <Play className="w-5 h-5 fill-current" />
-          <span>🚀 START SURVEY (BẮT ĐẦU NHIỆM VỤ MỚI)</span>
-        </button>
+      {/* 2. Stat Metric Cards (Matching vku-field-survey.pages.dev) */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider font-mono">TỔNG PHIẾU ĐÃ THU</span>
+            <Database className="w-5 h-5 text-sky-400" />
+          </div>
+          <div className="text-3xl font-black text-white font-mono">{recentSurveys.length}</div>
+          <div className="text-[11px] text-slate-400 font-medium">Toàn bộ dữ liệu thu thập</div>
+        </div>
 
-        <button
-          onClick={() => onNavigateTab('map')}
-          className="py-4 px-6 rounded-2xl bg-white dark:bg-navy-800 border border-slate-200 dark:border-navy-700 hover:border-electric-400 font-extrabold text-sm text-navy-800 dark:text-white flex items-center justify-center gap-2 shadow-sm transition-all"
-        >
-          <MapPin className="w-4 h-4 text-electric-500" />
-          <span>Xem Bản Đồ VKU</span>
-        </button>
+        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider font-mono">ĐANG CHỜ ĐỒNG BỘ</span>
+            <Clock className="w-5 h-5 text-amber-400" />
+          </div>
+          <div className="text-3xl font-black text-amber-400 font-mono">{pendingCount}</div>
+          <div className="text-[11px] text-slate-400 font-medium">Lưu cục bộ an toàn IndexedDB</div>
+        </div>
+
+        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider font-mono">ĐÃ LÊN GOOGLE SHEET</span>
+            <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+          </div>
+          <div className="text-3xl font-black text-emerald-400 font-mono">{syncedCount}</div>
+          <div className="text-[11px] text-slate-400 font-medium">Đồng bộ hoàn tất lên cloud</div>
+        </div>
+
+        <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg space-y-2">
+          <div className="flex items-center justify-between text-slate-400">
+            <span className="text-xs font-bold uppercase tracking-wider font-mono">CẦN LƯU Ý</span>
+            <AlertTriangle className="w-5 h-5 text-rose-400" />
+          </div>
+          <div className="text-3xl font-black text-rose-400 font-mono">{attentionCount}</div>
+          <div className="text-[11px] text-slate-400 font-medium">Đánh giá ≤ 2 sao hoặc hỏng</div>
+        </div>
       </div>
 
-      {/* 4. Continue Mission (If incomplete draft exists in IndexedDB) */}
+      {/* 3. Continue Incomplete Draft Alert */}
       {activeDraft && (
-        <div className="p-5 rounded-2xl bg-gradient-to-r from-amber-50 to-orange-50 dark:from-navy-800 dark:to-navy-700 border-2 border-amber-300 dark:border-amber-600/50 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="p-5 rounded-2xl bg-amber-950/40 border border-amber-500/40 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div className="flex items-start gap-3.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-10 h-10 rounded-xl bg-amber-500 text-slate-950 flex items-center justify-center shrink-0 shadow-md font-black">
               <FileEdit className="w-5 h-5" />
             </div>
             <div>
-              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-800 dark:text-amber-400 uppercase font-mono">
-                <span>⚡ KHẢO SÁT ĐANG LÀM DỞ (BƯỚC {activeDraft.step}/5)</span>
+              <div className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-400 uppercase font-mono">
+                <span>⚡ BẢN NHÁP CHƯA HOÀN THÀNH (BƯỚC {activeDraft.step}/4)</span>
               </div>
-              <h4 className="font-extrabold text-base text-navy-900 dark:text-white">
-                {activeDraft.building} — Phòng {activeDraft.room || 'Chưa đặt tên'} ({activeDraft.facilityType})
+              <h4 className="font-extrabold text-base text-white">
+                {activeDraft.building} — {activeDraft.room || 'Vị trí chưa ghi tên'} ({activeDraft.facilityType})
               </h4>
-              <p className="text-xs text-slate-500 mt-0.5">
-                Dữ liệu tự động bảo toàn trong IndexedDB. Bạn có thể tiếp tục bất cứ lúc nào!
+              <p className="text-xs text-slate-400 mt-0.5">
+                Bản nháp được bảo toàn tự động trong IndexedDB của máy tính/điện thoại này.
               </p>
             </div>
           </div>
 
           <button
             onClick={onStartSurvey}
-            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-colors"
+            className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 shadow-md transition-colors"
           >
-            <span>Tiếp tục nhiệm vụ</span>
+            <span>Tiếp Tục Khảo Sát</span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </div>
       )}
 
-      {/* 5. Recent Field Notes Feed */}
+      {/* 4. Recent Surveys Feed */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-extrabold text-lg text-navy-900 dark:text-white tracking-tight">Recent Field Notes</h3>
-            <p className="text-xs text-slate-500">Các cuộc khảo sát cơ sở vật chất được ghi nhận gần đây</p>
+            <h3 className="font-extrabold text-lg text-white tracking-tight">Danh Sách Phiếu Đã Thu Thập</h3>
+            <p className="text-xs text-slate-400">Xem nhanh danh sách phiếu điều tra thực địa mới nhất</p>
           </div>
           <button
             onClick={() => onNavigateTab('records')}
-            className="text-xs font-bold text-electric-500 hover:text-electric-600 flex items-center gap-1"
+            className="text-xs font-bold text-sky-400 hover:text-sky-300 flex items-center gap-1"
           >
-            <span>Xem tất cả</span>
+            <span>Xem bảng đầy đủ</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
 
         {recentSurveys.length === 0 ? (
-          <div className="p-8 rounded-2xl bg-white dark:bg-navy-800 border border-dashed border-slate-200 dark:border-navy-700 text-center text-slate-400 space-y-2">
-            <Database className="w-8 h-8 mx-auto text-slate-300 dark:text-navy-600" />
-            <p className="text-sm font-semibold">Chưa có bản ghi khảo sát nào.</p>
-            <p className="text-xs">Bấm "START SURVEY" để bắt đầu lượt thanh tra đầu tiên tại VKU!</p>
+          <div className="p-8 rounded-2xl bg-slate-900 border border-dashed border-slate-800 text-center text-slate-400 space-y-2">
+            <Database className="w-8 h-8 mx-auto text-slate-600" />
+            <p className="text-sm font-semibold">Chưa có phiếu khảo sát nào.</p>
+            <p className="text-xs text-slate-500">Bấm "+ KHẢO SÁT MỚI" để lập phiếu khảo sát thực địa đầu tiên!</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">

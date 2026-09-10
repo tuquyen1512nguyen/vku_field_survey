@@ -1,26 +1,14 @@
-import React, { useState, useEffect } from 'react';
-import {
-  User,
-  Moon,
-  Sun,
-  RefreshCw,
-  Compass,
-  Trash2,
-  Download,
-  ShieldCheck,
-  CheckCircle2,
-  HardDrive
-} from 'lucide-react';
+import React, { useState } from 'react';
+import { Save, Copy, Check, Sheet, Code, User, Database, RefreshCw, Trash2, Smartphone } from 'lucide-react';
 import { UserSettings, Survey } from '../types';
-import { getStorageEstimate } from '../services/indexedDB';
 
 interface ProfileSettingsProps {
   settings: UserSettings;
-  onUpdateSettings: (newSettings: UserSettings) => void;
+  onUpdateSettings: (newSettings: UserSettings) => Promise<void>;
   surveys: Survey[];
-  onClearData: () => void;
-  onInstallPWA: () => void;
-  canInstallPWA: boolean;
+  onClearData: () => Promise<void>;
+  onInstallPWA?: () => void;
+  canInstallPWA?: boolean;
 }
 
 export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
@@ -31,146 +19,339 @@ export const ProfileSettings: React.FC<ProfileSettingsProps> = ({
   onInstallPWA,
   canInstallPWA,
 }) => {
-  const [storageUsage, setStorageUsage] = useState<string>('Đang tính...');
+  const [auditorName, setAuditorName] = useState(settings.auditorName || 'Nguyễn Văn An');
+  const [studentId, setStudentId] = useState(settings.studentId || '21IT001');
+  const [department, setDepartment] = useState(settings.department || 'Đội Khảo Sát Số 1 - Khoa CNTT');
+  const [auditorPhone, setAuditorPhone] = useState(settings.auditorPhone || '0905123456');
 
-  useEffect(() => {
-    getStorageEstimate().then(setStorageUsage);
-  }, [surveys]);
+  const [googleScriptUrl, setGoogleScriptUrl] = useState(
+    settings.googleScriptUrl || ''
+  );
+  const [publicSheetUrl, setPublicSheetUrl] = useState(
+    settings.publicSheetUrl || ''
+  );
+  const [autoSyncGoogleSheet, setAutoSyncGoogleSheet] = useState(settings.autoSyncGoogleSheet ?? true);
+  const [highAccuracyGPS, setHighAccuracyGPS] = useState(settings.highAccuracyGPS ?? true);
 
-  const totalSurveys = surveys.length;
-  const goodCount = surveys.filter((s) => s.condition === 'GOOD').length;
-  const issueCount = surveys.filter((s) => s.condition === 'DAMAGED' || s.condition === 'NEEDS_ATTENTION').length;
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedSuccess, setSavedSuccess] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+  const [showCode, setShowCode] = useState(true);
+
+  const googleAppsScriptCode = `// VKU FIELD SURVEY - GOOGLE APPS SCRIPT WEB APP ENDPOINT
+function doPost(e) {
+  try {
+    var contents = e.postData.contents;
+    var data = JSON.parse(contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getActiveSheet();
+    setupSheetHeaders(sheet);
+
+    var row = [
+      data.id || '',
+      data.createdAt || new Date().toISOString(),
+      data.auditorName || '',
+      data.studentId || '',
+      data.department || '',
+      data.auditorPhone || '',
+      data.targetName || '',
+      data.targetId || '',
+      data.targetPhone || '',
+      data.targetType || '',
+      (data.building || '') + ' - ' + (data.floor || '') + ' - ' + (data.room || ''),
+      data.topic || data.facilityType || '',
+      (data.ratingStars ? data.ratingStars + ' Star' : '') + ' (' + (data.condition || '') + ')',
+      data.notes || '',
+      (data.latitude ? data.latitude.toFixed(6) : '') + ', ' + (data.longitude ? data.longitude.toFixed(6) : ''),
+      data.photos && data.photos.length > 0 ? 'Có (' + data.photos.length + ' ảnh)' : 'Không'
+    ];
+
+    sheet.appendRow(row);
+    return ContentService.createTextOutput(JSON.stringify({ result: "success", id: data.id }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({ result: "error", error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function setupSheetHeaders(sheet) {
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow([
+      "Mã Khảo Sát (ID)",
+      "Thời Gian Khảo Sát",
+      "Họ Tên ĐTV",
+      "Mã ĐTV / MSSV",
+      "Đơn Vị / Đội",
+      "SĐT ĐTV",
+      "Tên Đối Tượng",
+      "Mã/CCCD Đối Tượng",
+      "SĐT Đối Tượng",
+      "Loại Đối Tượng",
+      "Địa Điểm Thực Địa",
+      "Chuyên Đề Khảo Sát",
+      "Đánh Giá Chất Lượng",
+      "Ý Kiến / Ghi Chú",
+      "Tọa Độ GPS Vệ Tinh",
+      "Ảnh Minh Chứng"
+    ]);
+  }
+}`;
+
+  const handleCopyCode = () => {
+    navigator.clipboard.writeText(googleAppsScriptCode);
+    setCopiedCode(true);
+    setTimeout(() => setCopiedCode(false), 2500);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      await onUpdateSettings({
+        darkMode: true,
+        autoSync: autoSyncGoogleSheet,
+        highAccuracyGPS,
+        auditorName: auditorName.trim(),
+        studentId: studentId.trim(),
+        department: department.trim(),
+        auditorPhone: auditorPhone.trim(),
+        googleScriptUrl: googleScriptUrl.trim(),
+        publicSheetUrl: publicSheetUrl.trim(),
+        autoSyncGoogleSheet,
+      });
+
+      setSavedSuccess(true);
+      setTimeout(() => setSavedSuccess(false), 3000);
+    } catch (err) {
+      console.error(err);
+      alert('Lỗi lưu cài đặt');
+    } finally {
+      setIsSaving(false);
+    }
+  };
 
   return (
-    <div className="space-y-6 pb-20 max-w-3xl mx-auto">
-      {/* 1. Inspector Badge Card */}
-      <div className="p-6 rounded-3xl bg-gradient-to-br from-navy-800 to-navy-900 text-white border border-navy-700 shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-electric-600 to-field-500 flex items-center justify-center text-white text-2xl font-extrabold shadow-hud">
-            VKU
-          </div>
+    <div className="space-y-6 pb-12 max-w-3xl mx-auto animate-fadeIn">
+      {/* Header */}
+      <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-1">
+        <h2 className="text-xl md:text-2xl font-black text-white tracking-tight flex items-center gap-2">
+          <Sheet className="w-6 h-6 text-sky-400" />
+          <span>Cấu Hình Hệ Thống & Google Sheets</span>
+        </h2>
+        <p className="text-xs text-slate-400">
+          Thiết lập kết nối bảng tính Google Sheet công khai, hồ sơ điều tra viên và tùy chọn lưu trữ offline
+        </p>
+      </div>
+
+      {/* 1. Hồ Sơ Mặc Định ĐTV */}
+      <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+        <div className="flex items-center gap-2 text-sm font-extrabold text-white uppercase tracking-wider">
+          <User className="w-4 h-4 text-sky-400" />
+          <span>Hồ Sơ Mặc Định Của Người Đi Khảo Sát</span>
+        </div>
+        <p className="text-xs text-slate-400">
+          Thông tin này sẽ được tự động điền vào mỗi phiếu khảo sát để bạn không phải gõ lại khi đi thực địa.
+        </p>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
           <div>
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-field-500/20 text-field-400 text-[10px] font-bold font-mono uppercase mb-1">
-              <span>● AUDITOR LEVEL 1</span>
+            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Họ tên Điều tra viên</label>
+            <input
+              type="text"
+              value={auditorName}
+              onChange={(e) => setAuditorName(e.target.value)}
+              className="w-full p-3 rounded-xl border border-slate-700 bg-slate-950 text-white font-bold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Mã ĐTV / MSSV</label>
+            <input
+              type="text"
+              value={studentId}
+              onChange={(e) => setStudentId(e.target.value)}
+              className="w-full p-3 rounded-xl border border-slate-700 bg-slate-950 text-white font-bold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Đội / Nhóm / Đơn vị</label>
+            <input
+              type="text"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              className="w-full p-3 rounded-xl border border-slate-700 bg-slate-950 text-white font-semibold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">SĐT Điều tra viên</label>
+            <input
+              type="text"
+              value={auditorPhone}
+              onChange={(e) => setAuditorPhone(e.target.value)}
+              className="w-full p-3 rounded-xl border border-slate-700 bg-slate-950 text-white font-semibold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Tích Hợp Đồng Bộ Google Sheets */}
+      <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+        <div className="flex items-center gap-2 text-sm font-extrabold text-white uppercase tracking-wider">
+          <Sheet className="w-4 h-4 text-emerald-400" />
+          <span>Tích Hợp Đồng Bộ Google Sheets</span>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">
+              Google Apps Script Web App URL (Endpoint Đồng Bộ)
+            </label>
+            <input
+              type="text"
+              value={googleScriptUrl}
+              onChange={(e) => setGoogleScriptUrl(e.target.value)}
+              placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+              className="w-full p-3.5 rounded-xl border border-slate-700 bg-slate-950 text-sky-400 font-mono text-xs focus:ring-2 focus:ring-sky-500 outline-none"
+            />
+            <p className="text-[11px] text-slate-500 mt-1">Dán đường dẫn Web App của Google Apps Script tại đây để dữ liệu tự động ghi vào Sheet.</p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">
+              Link Xem Bảng Tính Google Sheet Công Khai (Public View URL)
+            </label>
+            <input
+              type="text"
+              value={publicSheetUrl}
+              onChange={(e) => setPublicSheetUrl(e.target.value)}
+              placeholder="https://docs.google.com/spreadsheets/d/1_.../edit"
+              className="w-full p-3.5 rounded-xl border border-slate-700 bg-slate-950 text-emerald-400 font-mono text-xs focus:ring-2 focus:ring-sky-500 outline-none"
+            />
+          </div>
+
+          {/* Toggle Auto Sync */}
+          <div className="flex items-center justify-between p-3.5 rounded-xl bg-slate-950 border border-slate-800">
+            <div>
+              <div className="text-xs font-bold text-white">Tự động gửi lên Google Sheets khi Online</div>
+              <div className="text-[11px] text-slate-400">Tự động đẩy phiếu từ hàng đợi máy lên Google Sheet khi khôi phục kết nối Internet.</div>
             </div>
-            <h3 className="font-extrabold text-xl">{settings.auditorName}</h3>
-            <p className="text-xs text-slate-300 font-mono">
-              MSSV: {settings.studentId} | {settings.department}
-            </p>
+            <input
+              type="checkbox"
+              checked={autoSyncGoogleSheet}
+              onChange={(e) => setAutoSyncGoogleSheet(e.target.checked)}
+              className="w-5 h-5 accent-sky-500 rounded cursor-pointer"
+            />
           </div>
-        </div>
 
-        <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10 text-right">
-          <div className="text-[10px] font-mono text-electric-300 uppercase">FIELD VERSION</div>
-          <div className="text-sm font-extrabold font-mono">v2.0.4 PWA</div>
+          {/* Code Apps Script Block */}
+          <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs font-bold text-slate-300">
+                <Code className="w-4 h-4 text-amber-400" />
+                <span>Mã Google Apps Script Tự Động Ghi Sheet</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCode(!showCode)}
+                  className="text-xs text-slate-400 hover:text-white underline"
+                >
+                  {showCode ? 'Ẩn mã' : 'Xem mã'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCopyCode}
+                  className="px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-1 shadow-sm"
+                >
+                  {copiedCode ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedCode ? 'Đã Copy Mã!' : 'Copy Mã Apps Script'}</span>
+                </button>
+              </div>
+            </div>
+
+            {showCode && (
+              <pre className="p-3.5 rounded-xl bg-slate-900 text-sky-300 font-mono text-[11px] overflow-x-auto border border-slate-800 leading-relaxed">
+                {googleAppsScriptCode}
+              </pre>
+            )}
+
+            <div className="text-xs text-slate-400 space-y-1 pt-1">
+              <div className="font-bold text-white">Cách cài đặt 6 bước:</div>
+              <ol className="list-decimal list-inside space-y-0.5 text-[11px] text-slate-400">
+                <li>Mở Google Sheets của bạn &gt; vào <strong>Tiện ích mở rộng (Extensions) &gt; Apps Script</strong>.</li>
+                <li>Dán đoạn mã phía trên vào và bấm Lưu.</li>
+                <li>Bấm <strong>Deploy &gt; New deployment</strong>.</li>
+                <li>Mục Select type: Chọn <strong>Web app</strong>.</li>
+                <li>Mục Who has access: Chọn <strong>Anyone (Bất kỳ ai)</strong>.</li>
+                <li>Bấm Deploy, cấp quyền và copy <strong>Web App URL</strong> dán vào ô bên trên.</li>
+              </ol>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* 2. Field Audit Statistics */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="p-4 rounded-2xl bg-white dark:bg-navy-800 border border-slate-200 dark:border-navy-700 text-center">
-          <div className="text-2xl font-extrabold font-mono text-electric-600 dark:text-electric-400">{totalSurveys}</div>
-          <div className="text-[11px] font-bold text-slate-500 uppercase mt-0.5">Tổng phiếu đã làm</div>
+      {/* 3. Quản Lý Bộ Nhớ Máy (IndexedDB) & PWA */}
+      <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+        <div className="flex items-center gap-2 text-sm font-extrabold text-white uppercase tracking-wider">
+          <Database className="w-4 h-4 text-purple-400" />
+          <span>Quản Lý Bộ Nhớ Máy (IndexedDB) & App</span>
         </div>
-        <div className="p-4 rounded-2xl bg-white dark:bg-navy-800 border border-slate-200 dark:border-navy-700 text-center">
-          <div className="text-2xl font-extrabold font-mono text-emerald-600">{goodCount}</div>
-          <div className="text-[11px] font-bold text-slate-500 uppercase mt-0.5">Điểm đạt chuẩn</div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 rounded-2xl bg-slate-950 border border-slate-800">
+          <div>
+            <div className="text-xs font-bold text-white">Số lượng phiếu đang lưu trên máy</div>
+            <div className="text-[11px] text-slate-400">Tổng cộng {surveys.length} bản ghi khảo sát trong cơ sở dữ liệu IndexedDB.</div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={onClearData}
+              className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>Xóa Hết DB</span>
+            </button>
+          </div>
         </div>
-        <div className="p-4 rounded-2xl bg-white dark:bg-navy-800 border border-slate-200 dark:border-navy-700 text-center">
-          <div className="text-2xl font-extrabold font-mono text-rose-600">{issueCount}</div>
-          <div className="text-[11px] font-bold text-slate-500 uppercase mt-0.5">Điểm có sự cố</div>
-        </div>
+
+        {canInstallPWA && onInstallPWA && (
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-sky-950/40 border border-sky-500/30">
+            <div>
+              <div className="text-xs font-bold text-sky-400">Cài Đặt Ứng Dụng Ra Màn Hình Chính (PWA)</div>
+              <div className="text-[11px] text-slate-300">Cài ứng dụng để chạy độc lập không có thanh URL trình duyệt.</div>
+            </div>
+            <button
+              onClick={onInstallPWA}
+              className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-1.5 shadow-md"
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>Thêm Vào Màn Hình Chính</span>
+            </button>
+          </div>
+        )}
       </div>
 
-      {/* 3. PWA Install Dedicated Card */}
-      <div className="p-6 rounded-3xl bg-gradient-to-r from-electric-50 to-sky-50 dark:from-navy-800 dark:to-navy-900 border-2 border-electric-300 dark:border-electric-800/60 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <div className="inline-flex items-center gap-1.5 text-xs font-bold text-electric-700 dark:text-electric-400 uppercase font-mono">
-            <span>📦 TAKE VKU SURVEY OFFLINE</span>
-          </div>
-          <h4 className="font-extrabold text-base text-navy-900 dark:text-white">
-            Cài đặt Ứng dụng về Màn hình chính
-          </h4>
-          <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed max-w-md">
-            Cài đặt để tiếp tục chuyến khảo sát tại tầng hầm và các góc khuất không có mạng Internet. Khởi động tức thì trong chưa đầy 1 giây!
-          </p>
-        </div>
-
+      {/* Save Settings Button */}
+      <div className="flex justify-end gap-3">
         <button
-          onClick={onInstallPWA}
-          className="w-full sm:w-auto px-6 py-3 rounded-2xl bg-electric-500 hover:bg-electric-600 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-electric-500/25 transition-transform active:scale-95 whitespace-nowrap"
+          onClick={handleSave}
+          disabled={isSaving}
+          className="px-8 py-4 rounded-2xl bg-sky-600 hover:bg-sky-500 text-white font-black text-sm flex items-center gap-2 shadow-lg shadow-sky-600/30 transition-all disabled:opacity-50"
         >
-          <Download className="w-4 h-4" />
-          <span>📲 INSTALL APP</span>
+          {savedSuccess ? (
+            <>
+              <Check className="w-5 h-5 text-emerald-300" />
+              <span>Đã Lưu Cấu Hình!</span>
+            </>
+          ) : (
+            <>
+              <Save className="w-5 h-5" />
+              <span>LƯU CÀI ĐẶT CẤU HÌNH</span>
+            </>
+          )}
         </button>
-      </div>
-
-      {/* 4. System Settings & Toggles */}
-      <div className="p-6 rounded-3xl bg-white dark:bg-navy-800 border border-slate-200 dark:border-navy-700 space-y-5">
-        <h4 className="font-extrabold text-sm uppercase text-slate-400 font-mono tracking-wider">
-          CẤU HÌNH HỆ THỐNG
-        </h4>
-
-        {/* Auto Sync Toggle */}
-        <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-navy-700/80">
-          <div className="flex items-center gap-3">
-            <RefreshCw className="w-5 h-5 text-electric-500" />
-            <div>
-              <div className="font-bold text-sm text-navy-900 dark:text-white">Tự động đồng bộ (Auto Sync)</div>
-              <div className="text-xs text-slate-500">Tự động gửi dữ liệu khi phát hiện kết nối mạng khôi phục</div>
-            </div>
-          </div>
-          <button
-            onClick={() => onUpdateSettings({ ...settings, autoSync: !settings.autoSync })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-1 ${settings.autoSync ? 'bg-field-500' : 'bg-slate-300 dark:bg-navy-600'}`}
-          >
-            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${settings.autoSync ? 'translate-x-6' : ''}`} />
-          </button>
-        </div>
-
-        {/* High Accuracy GPS Toggle */}
-        <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-navy-700/80">
-          <div className="flex items-center gap-3">
-            <Compass className="w-5 h-5 text-electric-500" />
-            <div>
-              <div className="font-bold text-sm text-navy-900 dark:text-white">GPS độ chính xác cao</div>
-              <div className="text-xs text-slate-500">Bật chế độ quét vệ tinh đa kênh để định vị chính xác phòng học</div>
-            </div>
-          </div>
-          <button
-            onClick={() => onUpdateSettings({ ...settings, highAccuracyGPS: !settings.highAccuracyGPS })}
-            className={`w-12 h-6 rounded-full transition-colors relative p-1 ${settings.highAccuracyGPS ? 'bg-field-500' : 'bg-slate-300 dark:bg-navy-600'}`}
-          >
-            <div className={`w-4 h-4 rounded-full bg-white transition-transform ${settings.highAccuracyGPS ? 'translate-x-6' : ''}`} />
-          </button>
-        </div>
-
-        {/* Storage Quota */}
-        <div className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-navy-700/80">
-          <div className="flex items-center gap-3">
-            <HardDrive className="w-5 h-5 text-electric-500" />
-            <div>
-              <div className="font-bold text-sm text-navy-900 dark:text-white">Dung lượng bộ nhớ IndexedDB</div>
-              <div className="text-xs text-slate-500">Dữ liệu lưu trữ cục bộ trên thiết bị của bạn</div>
-            </div>
-          </div>
-          <span className="font-mono text-xs font-bold text-navy-900 dark:text-white">{storageUsage}</span>
-        </div>
-
-        {/* Clear Cache & Test Data */}
-        <div className="flex items-center justify-between py-2 pt-3">
-          <div>
-            <div className="font-bold text-sm text-rose-600">Dọn dẹp dữ liệu kiểm thử</div>
-            <div className="text-xs text-slate-500">Xóa các khảo sát mẫu hoặc dọn sạch IndexedDB</div>
-          </div>
-          <button
-            onClick={onClearData}
-            className="px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/40 text-rose-600 hover:bg-rose-100 text-xs font-extrabold border border-rose-200 transition-colors flex items-center gap-1.5"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-            <span>Xóa dữ liệu</span>
-          </button>
-        </div>
       </div>
     </div>
   );

@@ -4,16 +4,20 @@ import {
   ArrowRight,
   MapPin,
   Camera,
-  CheckCircle2,
+  Check,
   Trash2,
   Save,
   UploadCloud,
-  AlertTriangle,
   RotateCcw,
-  Sparkles
+  Star,
+  User,
+  Building2,
+  FileText,
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react';
 import { LocationService } from '../services/locationService';
-import { saveDraft, clearDraft, saveSurvey, addToSyncQueue } from '../services/indexedDB';
+import { saveDraft, clearDraft, saveSurvey, addToSyncQueue, getSettings } from '../services/indexedDB';
 import { syncService } from '../services/syncService';
 import { CameraModal } from '../components/CameraModal';
 import {
@@ -22,55 +26,92 @@ import {
   FacilityType,
   ConditionRating,
   GPSCoordinates,
-  SurveyPhoto
+  SurveyPhoto,
+  UserSettings
 } from '../types';
 
 interface SurveyFormProps {
   onBack: () => void;
   onSurveyCompleted: (survey: Survey) => void;
   initialDraft?: SurveyDraft | null;
+  settings: UserSettings;
 }
 
 export const SurveyForm: React.FC<SurveyFormProps> = ({
   onBack,
   onSurveyCompleted,
   initialDraft,
+  settings,
 }) => {
   const [surveyId] = useState<string>(
     initialDraft?.id || 'SUR-' + Math.floor(10000 + Math.random() * 90000)
   );
   const [step, setStep] = useState<number>(initialDraft?.step || 1);
+
+  // Bước 1: Thông tin ĐTV & Đối Tượng
+  const [auditorName, setAuditorName] = useState<string>(
+    initialDraft?.auditorName || settings.auditorName || 'Nguyễn Văn An'
+  );
+  const [studentId, setStudentId] = useState<string>(
+    initialDraft?.studentId || settings.studentId || '21IT001'
+  );
+  const [department, setDepartment] = useState<string>(
+    initialDraft?.department || settings.department || 'Đội Khảo Sát Số 1 - Khoa CNTT'
+  );
+  const [auditorPhone, setAuditorPhone] = useState<string>(
+    initialDraft?.auditorPhone || settings.auditorPhone || '0905123456'
+  );
+
+  const [targetName, setTargetName] = useState<string>(initialDraft?.targetName || '');
+  const [targetId, setTargetId] = useState<string>(initialDraft?.targetId || '');
+  const [targetPhone, setTargetPhone] = useState<string>(initialDraft?.targetPhone || '');
+  const [targetType, setTargetType] = useState<string>(initialDraft?.targetType || 'Sinh viên VKU');
+
+  // Bước 2: Địa Điểm & Nội Dung
   const [building, setBuilding] = useState<string>(initialDraft?.building || 'Khu A');
   const [floor, setFloor] = useState<string>(initialDraft?.floor || 'Tầng 2');
   const [room, setRoom] = useState<string>(initialDraft?.room || 'A.204');
   const [facilityType, setFacilityType] = useState<FacilityType>(initialDraft?.facilityType || 'Classroom');
+  const [topic, setTopic] = useState<string>(initialDraft?.topic || 'Cơ sở vật chất & Thiết bị');
   const [condition, setCondition] = useState<ConditionRating>(initialDraft?.condition || 'GOOD');
+  const [ratingStars, setRatingStars] = useState<number>(initialDraft?.ratingStars || 5);
   const [notes, setNotes] = useState<string>(initialDraft?.notes || '');
+
+  // Bước 3: GPS & Minh Chứng Ảnh
   const [photos, setPhotos] = useState<SurveyPhoto[]>(initialDraft?.photos || []);
   const [gps, setGps] = useState<GPSCoordinates | undefined>(initialDraft?.gps);
   const [isLocating, setIsLocating] = useState<boolean>(false);
   const [isCameraOpen, setIsCameraOpen] = useState<boolean>(false);
   const [isSaving, setIsSaving] = useState<boolean>(false);
 
-  const totalSteps = 5;
+  const totalSteps = 4;
 
-  // Lấy GPS ban đầu nếu chưa có
   useEffect(() => {
     if (!gps) {
       handleGetLocation();
     }
   }, []);
 
-  // Tự động lưu nháp vào IndexedDB khi có thay đổi (Real-time Debounce Auto-Save)
+  // Tự động lưu nháp vào IndexedDB
   useEffect(() => {
     const draftData: SurveyDraft = {
       id: surveyId,
       step,
+      auditorName,
+      studentId,
+      department,
+      auditorPhone,
+      targetName,
+      targetId,
+      targetPhone,
+      targetType,
       building,
       floor,
       room,
       facilityType,
+      topic,
       condition,
+      ratingStars,
       notes,
       photos,
       gps,
@@ -82,7 +123,28 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [surveyId, step, building, floor, room, facilityType, condition, notes, photos, gps]);
+  }, [
+    surveyId,
+    step,
+    auditorName,
+    studentId,
+    department,
+    auditorPhone,
+    targetName,
+    targetId,
+    targetPhone,
+    targetType,
+    building,
+    floor,
+    room,
+    facilityType,
+    topic,
+    condition,
+    ratingStars,
+    notes,
+    photos,
+    gps,
+  ]);
 
   const handleGetLocation = async () => {
     setIsLocating(true);
@@ -100,9 +162,16 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
   };
 
   const handleNextStep = () => {
-    if (step === 1 && !room.trim()) {
-      alert('Vui lòng nhập số phòng / tên vị trí khảo sát');
-      return;
+    if (step === 1) {
+      if (!auditorName.trim() || !studentId.trim()) {
+        alert('Vui lòng nhập đầy đủ Họ tên ĐTV và Mã ĐTV/MSSV.');
+        return;
+      }
+    } else if (step === 2) {
+      if (!room.trim()) {
+        alert('Vui lòng nhập Số phòng / Tên vị trí cụ thể.');
+        return;
+      }
     }
     if (step < totalSteps) {
       setStep((prev) => prev + 1);
@@ -120,8 +189,8 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
   };
 
   const handleFinalSubmit = async () => {
-    if (!room.trim()) {
-      alert('Vui lòng nhập tên phòng!');
+    if (!room.trim() || !auditorName.trim()) {
+      alert('Vui lòng điền đầy đủ các thông tin bắt buộc!');
       setStep(1);
       return;
     }
@@ -132,11 +201,21 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
 
     const newSurvey: Survey = {
       id: surveyId,
+      auditorName: auditorName.trim(),
+      studentId: studentId.trim(),
+      department: department.trim(),
+      auditorPhone: auditorPhone.trim(),
+      targetName: targetName.trim(),
+      targetId: targetId.trim(),
+      targetPhone: targetPhone.trim(),
+      targetType: targetType.trim(),
       building,
       floor,
       room: room.trim(),
       facilityType,
+      topic,
       condition,
+      ratingStars,
       notes: notes.trim(),
       photos,
       latitude: gps?.latitude || 15.975294,
@@ -157,7 +236,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
       // 3. Xóa bản nháp
       await clearDraft();
 
-      // 4. Nếu online -> kích hoạt đồng bộ nền ngay
+      // 4. Nếu Online -> tự động kích hoạt đồng bộ
       if (isOnline) {
         syncService.syncAll('Gửi ngay khi nộp');
       }
@@ -171,128 +250,206 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
     }
   };
 
-  const facilityOptions: { id: FacilityType; icon: string; label: string }[] = [
-    { id: 'Classroom', icon: '🏫', label: 'Classroom (Phòng học)' },
-    { id: 'Laboratory', icon: '💻', label: 'Laboratory (Phòng Lab)' },
-    { id: 'Library', icon: '📚', label: 'Library (Thư viện)' },
-    { id: 'Parking', icon: '🛵', label: 'Parking (Nhà xe)' },
-    { id: 'Restroom', icon: '🚻', label: 'Restroom (Vệ sinh)' },
-    { id: 'Canteen', icon: '🍽️', label: 'Canteen (Nhà ăn)' },
-    { id: 'Outdoor Area', icon: '🌳', label: 'Outdoor (Khuôn viên)' },
-    { id: 'Other', icon: '📦', label: 'Other (Khu vực khác)' },
-  ];
-
-  const conditionOptions: { id: ConditionRating; icon: string; label: string; desc: string; border: string; bg: string; text: string }[] = [
-    {
-      id: 'GOOD',
-      icon: '🟢',
-      label: 'GOOD',
-      desc: 'Hoạt động hoàn hảo, mới, sạch sẽ',
-      border: 'border-emerald-500',
-      bg: 'bg-emerald-50 dark:bg-emerald-950/40',
-      text: 'text-emerald-700 dark:text-emerald-400'
-    },
-    {
-      id: 'NEEDS_ATTENTION',
-      icon: '🟡',
-      label: 'NEEDS ATTENTION',
-      desc: 'Hao mòn nhẹ, cần bảo dưỡng định kỳ',
-      border: 'border-amber-500',
-      bg: 'bg-amber-50 dark:bg-amber-950/40',
-      text: 'text-amber-700 dark:text-amber-400'
-    },
-    {
-      id: 'DAMAGED',
-      icon: '🔴',
-      label: 'DAMAGED',
-      desc: 'Hỏng hóc, chập điện hoặc mất an toàn',
-      border: 'border-rose-500',
-      bg: 'bg-rose-50 dark:bg-rose-950/40',
-      text: 'text-rose-700 dark:text-rose-400'
-    },
-    {
-      id: 'NOT_AVAILABLE',
-      icon: '⚫',
-      label: 'NOT AVAILABLE',
-      desc: 'Đang khóa, bảo trì hoặc không tiếp cận được',
-      border: 'border-slate-500',
-      bg: 'bg-slate-50 dark:bg-navy-700/50',
-      text: 'text-slate-700 dark:text-slate-300'
-    },
-  ];
-
   const progressPercent = Math.round((step / totalSteps) * 100);
 
   return (
-    <div className="space-y-5 pb-24 max-w-3xl mx-auto">
-      {/* 1. Header with Progress Bar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-navy-800 border border-slate-200 dark:border-navy-700 shadow-sm sticky top-14 z-20">
+    <div className="space-y-5 pb-24 max-w-3xl mx-auto animate-fadeIn">
+      {/* 1. Progress Header Bar */}
+      <div className="p-4 rounded-2xl bg-slate-900 border border-slate-800 shadow-lg sticky top-14 z-20">
         <div className="flex items-center justify-between gap-3 mb-2">
           <button
             onClick={handlePrevStep}
-            className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-navy-900 transition-colors"
+            className="flex items-center gap-1 text-xs font-bold text-slate-400 hover:text-white transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             <span>{step === 1 ? 'Thoát' : 'Quay lại'}</span>
           </button>
 
-          <span className="font-mono font-extrabold text-sm text-electric-600 dark:text-electric-400">
-            FIELD SURVEY #{surveyId}
+          <span className="font-mono font-black text-sm text-sky-400">
+            PHIẾU KHẢO SÁT #{surveyId}
           </span>
 
-          <span className="font-mono text-xs font-bold text-slate-500">
-            0{step} / 0{totalSteps}
+          <span className="font-mono text-xs font-bold text-slate-400">
+            Bước 0{step} / 0{totalSteps}
           </span>
         </div>
 
-        {/* Progress Bar */}
-        <div className="w-full h-2 bg-slate-100 dark:bg-navy-700 rounded-full overflow-hidden">
+        <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gradient-to-r from-electric-500 to-field-500 rounded-full transition-all duration-300"
+            className="h-full bg-gradient-to-r from-sky-500 to-emerald-500 rounded-full transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
       </div>
 
-      {/* 2. Step Content Cards */}
-      <div className="p-6 rounded-3xl bg-white dark:bg-navy-800 border border-slate-200/90 dark:border-navy-700/80 shadow-mission">
-        {/* STEP 1: LOCATION */}
+      {/* 2. Step Content Box */}
+      <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-6">
+        {/* BƯỚC 1: ĐTV & ĐỐI TƯỢNG */}
         {step === 1 && (
           <div className="space-y-5 animate-fadeIn">
             <div>
-              <span className="text-[11px] font-mono font-bold text-electric-500 uppercase tracking-wider">STEP 01 / LOCATION</span>
-              <h3 className="text-xl font-extrabold text-navy-900 dark:text-white mt-1">Xác định Vị trí Khảo sát</h3>
-              <p className="text-xs text-slate-500">Khai báo địa điểm cụ thể và tọa độ vệ tinh trong khuôn viên VKU</p>
+              <span className="text-[11px] font-mono font-bold text-sky-400 uppercase tracking-wider">BƯỚC 01 / THÔNG TIN CHUNG</span>
+              <h3 className="text-xl font-extrabold text-white mt-1">Điều Tra Viên & Đối Tượng Khảo Sát</h3>
+              <p className="text-xs text-slate-400">Khai báo thông tin người thực hiện và đối tượng phỏng vấn</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {/* Thông tin ĐTV */}
+            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-sky-400 uppercase tracking-wider">
+                <User className="w-4 h-4" />
+                <span>1. Thông tin người đi khảo sát (ĐTV)</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">
+                    Họ tên ĐTV <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={auditorName}
+                    onChange={(e) => setAuditorName(e.target.value)}
+                    placeholder="VD: Nguyễn Văn An"
+                    className="w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-white font-bold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">
+                    Mã ĐTV / MSSV <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={studentId}
+                    onChange={(e) => setStudentId(e.target.value)}
+                    placeholder="VD: 21IT001"
+                    className="w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-white font-bold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Đội / Đơn vị</label>
+                  <input
+                    type="text"
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    placeholder="VD: Đội Khảo Sát Số 1 - Khoa CNTT"
+                    className="w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-white font-medium text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Số điện thoại ĐTV</label>
+                  <input
+                    type="text"
+                    value={auditorPhone}
+                    onChange={(e) => setAuditorPhone(e.target.value)}
+                    placeholder="VD: 0905123456"
+                    className="w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-white font-medium text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Thông tin Đối tượng khảo sát */}
+            <div className="p-4 rounded-2xl bg-slate-950/60 border border-slate-800 space-y-4">
+              <div className="flex items-center gap-2 text-xs font-extrabold text-emerald-400 uppercase tracking-wider">
+                <User className="w-4 h-4" />
+                <span>2. Đối tượng được khảo sát (Tùy chọn)</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Họ tên đối tượng</label>
+                  <input
+                    type="text"
+                    value={targetName}
+                    onChange={(e) => setTargetName(e.target.value)}
+                    placeholder="VD: Trần Thị Mai / ThS. Hoàng Minh Đức"
+                    className="w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-white font-semibold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Loại đối tượng</label>
+                  <select
+                    value={targetType}
+                    onChange={(e) => setTargetType(e.target.value)}
+                    className="w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-white font-semibold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                  >
+                    <option value="Sinh viên VKU">Sinh viên VKU</option>
+                    <option value="Giảng viên / Cán bộ">Giảng viên / Cán bộ VKU</option>
+                    <option value="Chủ nhà trọ / Dân cư">Chủ nhà trọ / Dân cư xung quanh</option>
+                    <option value="Doanh nghiệp tuyển dụng">Doanh nghiệp tuyển dụng</option>
+                    <option value="Khác">Đối tượng khác</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Mã SV / CCCD đối tượng</label>
+                  <input
+                    type="text"
+                    value={targetId}
+                    onChange={(e) => setTargetId(e.target.value)}
+                    placeholder="VD: 22IT045 / 048099xxxxxx"
+                    className="w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-white font-medium text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">SĐT đối tượng</label>
+                  <input
+                    type="text"
+                    value={targetPhone}
+                    onChange={(e) => setTargetPhone(e.target.value)}
+                    placeholder="VD: 0914xxxxxx"
+                    className="w-full p-3 rounded-xl border border-slate-700 bg-slate-900 text-white font-medium text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* BƯỚC 2: NỘI DUNG & ĐÁNH GIÁ */}
+        {step === 2 && (
+          <div className="space-y-5 animate-fadeIn">
+            <div>
+              <span className="text-[11px] font-mono font-bold text-sky-400 uppercase tracking-wider">BƯỚC 02 / NỘI DUNG KHẢO SÁT</span>
+              <h3 className="text-xl font-extrabold text-white mt-1">Địa Điểm & Nội Dung Đánh Giá</h3>
+              <p className="text-xs text-slate-400">Chọn vị trí khảo sát tại trường VKU và nhập nội dung ghi nhận</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-extrabold text-navy-800 dark:text-slate-200 mb-1.5 uppercase">
+                <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">
                   Tòa nhà / Khu vực <span className="text-rose-500">*</span>
                 </label>
                 <select
                   value={building}
                   onChange={(e) => setBuilding(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-navy-600 bg-white dark:bg-navy-900 font-semibold text-sm focus:ring-2 focus:ring-electric-400 outline-none"
+                  className="w-full p-3 rounded-xl border border-slate-700 bg-slate-950 text-white font-bold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
                 >
-                  <option value="Khu A">Khu A — Tòa nhà Hiệu bộ & Giảng đường</option>
+                  <option value="Khu A">Khu A — Hiệu bộ & Giảng đường</option>
                   <option value="Khu B">Khu B — Khoa học Máy tính</option>
-                  <option value="Khu C">Khu C — Trung tâm Thực hành & Lab</option>
-                  <option value="Khu K">Khu K — Giảng đường Lớn & Hội trường</option>
-                  <option value="Khu V">Khu V — Khu liên hợp Đa năng & Tầng hầm</option>
+                  <option value="Khu C">Khu C — Thực hành & Lab</option>
+                  <option value="Khu K">Khu K — Giảng đường Lớn</option>
+                  <option value="Khu V">Khu V — Đa năng & Tầng hầm</option>
+                  <option value="Khuôn viên VKU">Khuôn viên ngoài trời</option>
+                  <option value="Khu vực ngoài trường">Khu vực ngoại vi trường</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-extrabold text-navy-800 dark:text-slate-200 mb-1.5 uppercase">
-                  Tầng <span className="text-rose-500">*</span>
-                </label>
+                <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Tầng</label>
                 <select
                   value={floor}
                   onChange={(e) => setFloor(e.target.value)}
-                  className="w-full p-3 rounded-xl border border-slate-200 dark:border-navy-600 bg-white dark:bg-navy-900 font-semibold text-sm focus:ring-2 focus:ring-electric-400 outline-none"
+                  className="w-full p-3 rounded-xl border border-slate-700 bg-slate-950 text-white font-bold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
                 >
-                  <option value="Tầng hầm">Tầng hầm (Hạ tầng điện & Cáp ngầm)</option>
+                  <option value="Tầng hầm">Tầng hầm</option>
                   <option value="Tầng 1">Tầng 1</option>
                   <option value="Tầng 2">Tầng 2</option>
                   <option value="Tầng 3">Tầng 3</option>
@@ -300,34 +457,145 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                   <option value="Tầng 5">Tầng 5</option>
                 </select>
               </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">
+                  Phòng / Vị trí cụ thể <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={room}
+                  onChange={(e) => setRoom(e.target.value)}
+                  placeholder="VD: A.204, Lab B.301, V.B02"
+                  className="w-full p-3 rounded-xl border border-slate-700 bg-slate-950 text-white font-bold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
+                  required
+                />
+              </div>
             </div>
 
             <div>
-              <label className="block text-xs font-extrabold text-navy-800 dark:text-slate-200 mb-1.5 uppercase">
-                Số phòng / Tên vị trí cụ thể <span className="text-rose-500">*</span>
-              </label>
+              <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">Chuyên đề khảo sát</label>
               <input
                 type="text"
-                value={room}
-                onChange={(e) => setRoom(e.target.value)}
-                placeholder="VD: A.204, Lab B.301, V.B02, Sân bóng..."
-                className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-navy-600 bg-white dark:bg-navy-900 font-bold text-sm focus:ring-2 focus:ring-electric-400 outline-none"
-                required
+                value={topic}
+                onChange={(e) => setTopic(e.target.value)}
+                placeholder="VD: Cơ sở vật chất & Thiết bị phòng học"
+                className="w-full p-3.5 rounded-xl border border-slate-700 bg-slate-950 text-white font-semibold text-sm focus:ring-2 focus:ring-sky-500 outline-none"
               />
             </div>
 
-            {/* GPS HUD Component */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-navy-900/60 border border-slate-200 dark:border-navy-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            {/* Mức độ Đánh Giá (Star Rating) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-2 uppercase">Đánh giá chất lượng hiện trường</label>
+              <div className="flex items-center gap-2">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => {
+                      setRatingStars(star);
+                      if (star >= 4) setCondition('GOOD');
+                      else if (star === 3) setCondition('NEEDS_ATTENTION');
+                      else setCondition('DAMAGED');
+                    }}
+                    className={`p-3 rounded-xl border transition-all ${
+                      ratingStars >= star
+                        ? 'bg-amber-500/20 border-amber-400 text-amber-400 scale-105'
+                        : 'bg-slate-950 border-slate-800 text-slate-600 hover:border-slate-700'
+                    }`}
+                  >
+                    <Star className={`w-6 h-6 ${ratingStars >= star ? 'fill-current' : ''}`} />
+                  </button>
+                ))}
+                <span className="ml-3 text-xs font-extrabold text-amber-400 font-mono">
+                  {ratingStars} / 5 SAO ({condition})
+                </span>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-bold text-slate-300 mb-1 uppercase">
+                Ý kiến phỏng vấn / Nội dung ghi nhận thực tế
+              </label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={4}
+                placeholder="Ghi lại chi tiết phản ánh của đối tượng hoặc mô tả chi tiết hư hỏng tại hiện trường..."
+                className="w-full p-3.5 rounded-xl border border-slate-700 bg-slate-950 text-white font-medium text-sm focus:ring-2 focus:ring-sky-500 outline-none leading-relaxed"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* BƯỚC 3: GPS & MINH CHỨNG ẢNH */}
+        {step === 3 && (
+          <div className="space-y-5 animate-fadeIn">
+            <div>
+              <span className="text-[11px] font-mono font-bold text-sky-400 uppercase tracking-wider">BƯỚC 03 / MINH CHỨNG THỰC ĐỊA</span>
+              <h3 className="text-xl font-extrabold text-white mt-1">Ảnh Chụp & Định Vị GPS Vệ Tinh</h3>
+              <p className="text-xs text-slate-400">Chụp ảnh xác thực hiện trường và cập nhật tọa độ GPS thực tế</p>
+            </div>
+
+            {/* Photo Capture Section */}
+            <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Camera className="w-5 h-5 text-sky-400" />
+                  <span className="text-xs font-bold text-white uppercase">Ảnh minh chứng hiện trường ({photos.length})</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsCameraOpen(true)}
+                  className="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center gap-2 shadow-md"
+                >
+                  <Camera className="w-4 h-4" />
+                  <span>Chụp Ảnh Native</span>
+                </button>
+              </div>
+
+              {photos.length === 0 ? (
+                <div
+                  onClick={() => setIsCameraOpen(true)}
+                  className="p-8 rounded-xl border-2 border-dashed border-slate-800 text-center cursor-pointer hover:border-sky-500 transition-colors"
+                >
+                  <Camera className="w-8 h-8 mx-auto text-slate-600 mb-2" />
+                  <p className="font-bold text-xs text-slate-300">Chưa đính kèm ảnh minh chứng nào</p>
+                  <p className="text-[11px] text-slate-500 mt-1">Bấm để bật Máy ảnh Native (Tự đóng dấu Watermark Tọa độ & Thời gian)</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {photos.map((p, index) => (
+                    <div key={p.id} className="relative rounded-xl overflow-hidden border border-slate-800 group">
+                      <img src={p.base64} alt={`Evidence ${index + 1}`} className="w-full h-32 object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePhoto(p.id)}
+                        className="absolute top-2 right-2 w-7 h-7 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-md hover:bg-rose-700"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                      <div className="absolute bottom-0 inset-x-0 bg-slate-950/80 text-[10px] text-sky-300 font-mono p-1 text-center">
+                        ẢNH #{index + 1} (WATERMARK)
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* GPS Telemetry Box */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-electric-100 dark:bg-electric-950 flex items-center justify-center text-electric-600 shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
                   <MapPin className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="text-xs font-bold text-navy-900 dark:text-white font-mono">
-                    {gps ? `${gps.latitude.toFixed(6)}, ${gps.longitude.toFixed(6)}` : 'Chưa có tọa độ'}
+                  <div className="text-xs font-bold text-white font-mono">
+                    {gps ? `GPS: ${gps.latitude.toFixed(6)}, ${gps.longitude.toFixed(6)}` : 'Chưa có tọa độ'}
                   </div>
-                  <div className="text-[11px] text-slate-500 font-mono">
-                    Sai số: ±{gps?.accuracy || 10}m | {gps?.source || 'Đang lấy...'}
+                  <div className="text-[11px] text-slate-400 font-mono">
+                    Độ chính xác: ±{gps?.accuracy || 10}m | {gps?.source || 'Capacitor Native GPS'}
                   </div>
                 </div>
               </div>
@@ -336,185 +604,73 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
                 type="button"
                 onClick={handleGetLocation}
                 disabled={isLocating}
-                className="px-4 py-2 rounded-xl bg-white dark:bg-navy-800 border border-slate-300 dark:border-navy-600 text-xs font-extrabold hover:border-electric-400 flex items-center gap-1.5 shadow-sm transition-all"
+                className="px-4 py-2 rounded-xl bg-slate-900 border border-slate-700 text-xs font-bold text-slate-200 hover:border-sky-400 flex items-center gap-1.5 shadow-sm transition-all"
               >
                 <RotateCcw className={`w-3.5 h-3.5 ${isLocating ? 'animate-spin' : ''}`} />
-                <span>📍 USE CURRENT LOCATION</span>
+                <span>📍 Định Vị Lại</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* STEP 2: FACILITY */}
-        {step === 2 && (
-          <div className="space-y-5 animate-fadeIn">
-            <div>
-              <span className="text-[11px] font-mono font-bold text-electric-500 uppercase tracking-wider">STEP 02 / FACILITY</span>
-              <h3 className="text-xl font-extrabold text-navy-900 dark:text-white mt-1">Chọn Loại Cơ Sở Vật Chất</h3>
-              <p className="text-xs text-slate-500">Phân loại đối tượng thanh tra để áp dụng tiêu chuẩn kiểm toán tương ứng</p>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              {facilityOptions.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setFacilityType(opt.id)}
-                  className={`p-4 rounded-2xl border text-center flex flex-col items-center justify-center gap-2 transition-all ${
-                    facilityType === opt.id
-                      ? 'border-electric-500 bg-electric-50/70 dark:bg-electric-950/40 shadow-md ring-2 ring-electric-400/20'
-                      : 'border-slate-200 dark:border-navy-700 hover:border-slate-300 bg-white dark:bg-navy-900'
-                  }`}
-                >
-                  <span className="text-3xl">{opt.icon}</span>
-                  <span className="text-xs font-bold text-navy-900 dark:text-white leading-tight">
-                    {opt.label}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: CONDITION */}
-        {step === 3 && (
-          <div className="space-y-5 animate-fadeIn">
-            <div>
-              <span className="text-[11px] font-mono font-bold text-electric-500 uppercase tracking-wider">STEP 03 / CONDITION</span>
-              <h3 className="text-xl font-extrabold text-navy-900 dark:text-white mt-1">Đánh Giá Tình Trạng Thực Tế</h3>
-              <p className="text-xs text-slate-500">Visual Cards hiển thị cấp độ chất lượng trang thiết bị hiện trường</p>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-              {conditionOptions.map((opt) => (
-                <button
-                  key={opt.id}
-                  type="button"
-                  onClick={() => setCondition(opt.id)}
-                  className={`p-5 rounded-2xl border-2 text-left flex items-start gap-4 transition-all ${
-                    condition === opt.id
-                      ? `${opt.border} ${opt.bg} shadow-md`
-                      : 'border-slate-200 dark:border-navy-700 hover:border-slate-300 bg-white dark:bg-navy-900'
-                  }`}
-                >
-                  <span className="text-2xl mt-0.5">{opt.icon}</span>
-                  <div>
-                    <div className={`font-extrabold text-sm ${opt.text}`}>
-                      {opt.label}
-                    </div>
-                    <div className="text-xs text-slate-500 mt-1">
-                      {opt.desc}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: EVIDENCE */}
+        {/* BƯỚC 4: RÀ SOÁT & LƯU */}
         {step === 4 && (
           <div className="space-y-5 animate-fadeIn">
-            <div className="flex items-center justify-between">
-              <div>
-                <span className="text-[11px] font-mono font-bold text-electric-500 uppercase tracking-wider">STEP 04 / EVIDENCE</span>
-                <h3 className="text-xl font-extrabold text-navy-900 dark:text-white mt-1">Minh Chứng Hình Ảnh Hiện Trường</h3>
-                <p className="text-xs text-slate-500">Chụp ảnh có đóng dấu Watermark tọa độ vệ tinh & dấu thời gian</p>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsCameraOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-electric-500 hover:bg-electric-600 text-white font-extrabold text-xs flex items-center gap-2 shadow-md shadow-electric-500/20"
-              >
-                <Camera className="w-4 h-4" />
-                <span>📸 TAKE PHOTO</span>
-              </button>
-            </div>
-
-            {photos.length === 0 ? (
-              <div
-                onClick={() => setIsCameraOpen(true)}
-                className="p-10 rounded-2xl border-2 border-dashed border-slate-300 dark:border-navy-700 bg-slate-50/50 dark:bg-navy-900/30 text-center cursor-pointer hover:border-electric-400 transition-colors"
-              >
-                <Camera className="w-10 h-10 mx-auto text-slate-400 mb-2" />
-                <p className="font-extrabold text-sm text-navy-800 dark:text-slate-200">Chưa có ảnh bằng chứng nào</p>
-                <p className="text-xs text-slate-500 mt-1">Nhấn để mở máy ảnh và chụp hình hiện trường (Hỗ trợ nhiều ảnh)</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {photos.map((photo, index) => (
-                  <div key={photo.id} className="relative rounded-2xl overflow-hidden border border-slate-200 dark:border-navy-700 shadow-sm group">
-                    <img src={photo.base64} alt={`Evidence ${index + 1}`} className="w-full h-36 object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => handleRemovePhoto(photo.id)}
-                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-md hover:bg-rose-700"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    <div className="absolute bottom-0 inset-x-0 bg-navy-900/80 text-[10px] text-electric-300 font-mono p-1 text-center">
-                      ẢNH #{index + 1}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* STEP 5: NOTE & REVIEW */}
-        {step === 5 && (
-          <div className="space-y-5 animate-fadeIn">
             <div>
-              <span className="text-[11px] font-mono font-bold text-electric-500 uppercase tracking-wider">STEP 05 / NOTES & REVIEW</span>
-              <h3 className="text-xl font-extrabold text-navy-900 dark:text-white mt-1">Ghi Chú & Xác Nhận Nộp</h3>
-              <p className="text-xs text-slate-500">Mô tả triệu chứng hư hỏng và đề xuất phương án bảo trì</p>
+              <span className="text-[11px] font-mono font-bold text-sky-400 uppercase tracking-wider">BƯỚC 04 / RÀ SOÁT & LƯU PHIẾU</span>
+              <h3 className="text-xl font-extrabold text-white mt-1">Xác Nhận & Lưu Phiếu Offline</h3>
+              <p className="text-xs text-slate-400">Rà soát lại toàn bộ dữ liệu trước khi ghi nhận vào bộ nhớ thiết bị</p>
             </div>
 
-            <div>
-              <label className="block text-xs font-extrabold text-navy-800 dark:text-slate-200 mb-1.5 uppercase">
-                Ghi chú mô tả chi tiết / Đề xuất sửa chữa
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={4}
-                placeholder="Mô tả sự cố bạn tìm thấy tại hiện trường (VD: Máy chiếu Panasonic bóng đèn mờ, quạt gió điều hòa kêu to, ổ cắm góc phòng bị lỏng...)"
-                className="w-full p-3.5 rounded-xl border border-slate-200 dark:border-navy-600 bg-white dark:bg-navy-900 font-medium text-sm focus:ring-2 focus:ring-electric-400 outline-none leading-relaxed"
-              />
+            {/* Summary Review Sheet Card */}
+            <div className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-3 text-xs">
+              <div className="flex justify-between py-1.5 border-b border-slate-800">
+                <span className="text-slate-400">Mã khảo sát:</span>
+                <span className="font-mono font-black text-sky-400">#{surveyId}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800">
+                <span className="text-slate-400">Điều tra viên:</span>
+                <span className="font-bold text-white">{auditorName} ({studentId})</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800">
+                <span className="text-slate-400">Đối tượng khảo sát:</span>
+                <span className="font-bold text-white">{targetName || 'Chưa ghi tên'} ({targetType})</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800">
+                <span className="text-slate-400">Vị trí hiện trường:</span>
+                <span className="font-extrabold text-white">{building} — {floor} — Phòng {room}</span>
+              </div>
+              <div className="flex justify-between py-1.5 border-b border-slate-800">
+                <span className="text-slate-400">Chuyên đề & Đánh giá:</span>
+                <span className="font-bold text-amber-400">{topic} ({ratingStars} Star)</span>
+              </div>
+              <div className="flex justify-between py-1.5">
+                <span className="text-slate-400">Minh chứng & GPS:</span>
+                <span className="font-bold text-emerald-400">{photos.length} ảnh chụp | GPS OK</span>
+              </div>
             </div>
 
-            {/* Summary Review Card */}
-            <div className="p-4 rounded-2xl bg-slate-50 dark:bg-navy-900/60 border border-slate-200 dark:border-navy-700 text-xs space-y-2">
-              <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-navy-700">
-                <span className="text-slate-500">Vị trí:</span>
-                <span className="font-extrabold text-navy-900 dark:text-white">{building} — {floor} — Phòng {room}</span>
+            {/* Explanation box */}
+            <div className="p-4 rounded-2xl bg-sky-950/40 border border-sky-500/30 text-xs text-slate-300 space-y-1">
+              <div className="font-bold text-sky-400 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4" />
+                <span>Cơ chế bảo vệ dữ liệu Offline-First</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-navy-700">
-                <span className="text-slate-500">Cơ sở vật chất:</span>
-                <span className="font-bold">{facilityType}</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-slate-200/60 dark:border-navy-700">
-                <span className="text-slate-500">Tình trạng:</span>
-                <span className="font-bold uppercase text-electric-600">{condition}</span>
-              </div>
-              <div className="flex justify-between py-1">
-                <span className="text-slate-500">Ảnh minh chứng:</span>
-                <span className="font-bold">{photos.length} tệp ảnh</span>
-              </div>
+              <p>
+                Phiếu điều tra sẽ được <strong>lưu ngay vào IndexedDB trên máy của bạn</strong> (hoạt động 100% không cần mạng). Khi thiết bị có Internet, dữ liệu sẽ tự động đẩy lên Google Sheets.
+              </p>
             </div>
           </div>
         )}
       </div>
 
       {/* 3. Sticky Bottom Actions Bar */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 dark:bg-navy-900/95 backdrop-blur-md border-t border-slate-200 dark:border-navy-800 z-30">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-slate-900/95 backdrop-blur-md border-t border-slate-800 z-30">
         <div className="max-w-3xl mx-auto flex items-center justify-between gap-3">
           <button
             type="button"
             onClick={handlePrevStep}
-            className="px-5 py-3 rounded-xl border border-slate-300 dark:border-navy-700 font-bold text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-100"
+            className="px-5 py-3 rounded-xl border border-slate-700 font-bold text-xs text-slate-300 hover:bg-slate-800"
           >
             {step === 1 ? 'Hủy' : '← Quay lại'}
           </button>
@@ -523,7 +679,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
             <button
               type="button"
               onClick={handleNextStep}
-              className="flex-1 sm:flex-none px-7 py-3 rounded-xl bg-electric-500 hover:bg-electric-600 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-md shadow-electric-500/25"
+              className="flex-1 sm:flex-none px-7 py-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 shadow-lg shadow-sky-600/30"
             >
               <span>Tiếp tục bước {step + 1}</span>
               <ArrowRight className="w-4 h-4" />
@@ -533,17 +689,17 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
               type="button"
               onClick={handleFinalSubmit}
               disabled={isSaving}
-              className="flex-1 sm:flex-none px-8 py-3.5 rounded-xl bg-field-500 hover:bg-field-600 text-white font-extrabold text-sm flex items-center justify-center gap-2 shadow-lg shadow-field-500/30 transition-all disabled:opacity-50"
+              className="flex-1 sm:flex-none px-8 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-black text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/30 transition-all disabled:opacity-50"
             >
               {syncService.isOnline() ? (
                 <>
                   <UploadCloud className="w-4 h-4" />
-                  <span>☁️ SAVE & SYNC (LƯU & ĐỒNG BỘ)</span>
+                  <span>☁️ LƯU & ĐỒNG BỘ GOOGLE SHEETS</span>
                 </>
               ) : (
                 <>
                   <Save className="w-4 h-4" />
-                  <span>💾 SAVE SURVEY (LƯU NGOẠI TUYẾN)</span>
+                  <span>💾 LƯU PHIẾU OFFLINE (VÀO MÁY)</span>
                 </>
               )}
             </button>
@@ -551,7 +707,7 @@ export const SurveyForm: React.FC<SurveyFormProps> = ({
         </div>
       </div>
 
-      {/* Custom Camera Viewfinder HUD */}
+      {/* Native Camera Modal */}
       <CameraModal
         isOpen={isCameraOpen}
         onClose={() => setIsCameraOpen(false)}
