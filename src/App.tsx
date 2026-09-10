@@ -57,8 +57,9 @@ export function App() {
       const draft = await getDraft();
       const userSets = await getSettings();
 
-      // Nếu chưa có dữ liệu, tự động nạp 4 mẫu dữ liệu thực tế
-      if (all.length === 0) {
+      // Nếu chưa có dữ liệu hoặc là dữ liệu v1 cũ (chưa có auditorName), xóa và nạp 4 mẫu mới
+      if (all.length === 0 || (all.length > 0 && !all[0].auditorName)) {
+        await clearAllDatabase();
         await seedSampleSurveys();
         return;
       }
